@@ -358,8 +358,9 @@ display: none;
 differences between treatment arms. Example code uses simulated count
 data.</p>
 <p><br></p>
-<div id="deseq2-with-fdr" class="section level2">
-<h2>DESeq2 with FDR</h2>
+</div>
+<div id="deseq2-with-fdr" class="section level1">
+<h1>DESeq2 with FDR</h1>
 <div id="description" class="section level3">
 <h3>Description</h3>
 <p>Using <code>DESeq2</code> for differential expression analysis.</p>
@@ -416,13 +417,20 @@ results(DESeq())</li>
 <p><br></p>
 </div>
 </div>
-<div id="diversity" class="section level2">
-<h2>Diversity</h2>
+<div id="diversity" class="section level1">
+<h1>Diversity</h1>
 <div id="description-2" class="section level3">
 <h3>Description</h3>
-<p>Calculate L1 and L2 Diversity for a vector of counts or normalized
-reads. L2 diversity returns a vector with [1] simpson’s index, and [2]
-inverse simpson.</p>
+<p><span class="math display">\[L_{\alpha} = \left( \sum^n_{i=1} P_i^
+\alpha \right) ^{\frac{1}{1-\alpha}}\]</span></p>
+<p>Calculate <span class="math inline">\(L_1\)</span> <span class="math inline">\((\alpha = 1)\)</span> and <span class="math inline">\(L_2\)</span> <span class="math inline">\((\alpha =
+2)\)</span> diversity for a vector of counts or normalized reads.</p>
+<p>Shannon’s <span class="math inline">\(L_1\)</span> diversity is
+calulated as <span class="math inline">\(e^{-\sum^n_{i=1} P_i
+log(P_i)}\)</span></p>
+<p>Simpson’s <span class="math inline">\(L_2\)</span> diversity returns
+a vector with <em>[1]</em> simpson’s index, and <em>[2]</em> inverse
+simpson.</p>
 <p><strong>Usage</strong></p>
 <p><code>shannon(v)</code></p>
 <p><code>simpson(v)</code></p>
@@ -483,8 +491,8 @@ months”..)</li>
 <p><br></p>
 </div>
 </div>
-<div id="permanova" class="section level2">
-<h2>PERMANOVA</h2>
+<div id="permanova" class="section level1">
+<h1>PERMANOVA</h1>
 <div id="description-5" class="section level3">
 <h3>Description</h3>
 <p>Combines runs PERMANOVA, comparing groups at a single timepoint</p>
@@ -511,8 +519,8 @@ columns</li>
 <p><br></p>
 </div>
 </div>
-<div id="pcoa" class="section level2">
-<h2>PCoA</h2>
+<div id="pcoa" class="section level1">
+<h1>PCoA</h1>
 <div id="description-6" class="section level3">
 <h3>Description</h3>
 <p>Function returning Eigenvectors, Eigenvalues, and Centroids from
@@ -568,8 +576,8 @@ columns</li>
 <p><br></p>
 </div>
 </div>
-<div id="longitudinal-results" class="section level2">
-<h2>Longitudinal Results</h2>
+<div id="longitudinal-results" class="section level1">
+<h1>Longitudinal Results</h1>
 <div id="description-8" class="section level3">
 <h3>Description</h3>
 <p>Combine p-value outputs for different timepoints in a single
@@ -621,7 +629,6 @@ components.</p>
 <li>add an optional title</li>
 </ul>
 <p><br></p>
-</div>
 </div>
 </div>
 
