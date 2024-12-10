@@ -4,6 +4,9 @@
 library(tidyverse)
 library(DESeq2)
 
+# Install DESeq2 from bioconductor
+  #> install.packages("BiocManager")
+  #> BiocManager::install("DESeq2")
 
 # Load Data --------------------------------------------------------------------
 
