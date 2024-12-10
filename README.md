@@ -1,8 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: sentence
----
 
 # RCT microbiome analysis
 
@@ -25,7 +20,8 @@ Using `DESeq2` for differential expression analysis.
 
 df
 
--   dataset with atleast IDs, treatment, and counts of all integer values. requires an ID variable in the first column and treatment variable directly before first count column
+-   dataset with atleast IDs, treatment, and counts of all integer values.
+requires an ID variable in the first column and treatment variable directly before first count column
 
 tx_col
 
@@ -58,7 +54,7 @@ Display DESeq output in a cleaner, more easy to work with way
 
 mod
 
--   model output from my do_deseq() function or package results(DESeq())
+-   model output from my `do_deseq()` function or package `results(DESeq())`
 
 vars
 
@@ -121,7 +117,7 @@ start_col
 
 ### Description
 
-Plot diversity values from calc_diversity() output, requires `patchwork` loaded
+Plot diversity values from `calc_diversity()` output, requires `patchwork` loaded
 
 **Usage**
 
@@ -131,7 +127,7 @@ Plot diversity values from calc_diversity() output, requires `patchwork` loaded
 
 dat
 
--   output table from calc_diversity()
+-   output table from `calc_diversity()`
 
 xlim
 
@@ -219,11 +215,11 @@ Plot Centroids from PCoA1 and PCoA2
 
 vectors
 
--   eigenvectors from pcoa() output
+-   eigenvectors from `pcoa()` output
 
 centroids
 
--   centroids from pcoa() output
+-   centroids from `pcoa()` output
 
 label
 
@@ -257,7 +253,7 @@ Combine p-value outputs for different timepoints in a single table.
 
 list_results
 
--   fit_permanova() output for each timepoint collected in a list
+-   `fit_permanova()` output for each timepoint collected in a list
 
 var_col
 
