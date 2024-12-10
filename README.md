@@ -1,7 +1,8 @@
 
 # RCT microbiome analysis
 
-Function documentation using simulated count data.
+Function documentation for comparing microbiome and resistome differences between treatment arms.
+Example code uses simulated count data.
 
 
 <br>
