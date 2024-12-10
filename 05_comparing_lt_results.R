@@ -11,7 +11,8 @@ library(plotly)
 
 # Combines p-value outputs for different timepoints in a single table
   #> list_results: fit_permanova() output for each timepoint collected in a list
-  #> var_col: the column of the result variable to be represented
+  #> var_col: the column of the result variable to be represented (e.g. column with `padj`, etc)
+  #> var_name: name of the variable in var_col
   #> bind: if no key variable for joining exists, use bind = TRUE to bind columns instead of joining
 
 combine_table <- function(list_results, var_col, var_name, bind = FALSE){
