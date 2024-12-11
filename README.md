@@ -70,7 +70,7 @@ var_label
 
 ### Description
 
-$$L_{\alpha} = \left( \sum^n_{i \ = \ 1} P_i^{\ \alpha} \right) ^{\frac{1}{1 \ - \ \alpha}}$$
+$$L_{\alpha} = \left( \sum^n_{i \ = \ 1} P_i^{\ \ \alpha} \right) ^{\frac{1}{1 \ - \ \alpha}}$$
 
 Calculate $L_1$ $(\alpha = 1)$ and $L_2$ $(\alpha = 2)$ diversity for a vector of counts or normalized reads. 
 
