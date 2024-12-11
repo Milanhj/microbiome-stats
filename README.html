@@ -354,9 +354,10 @@ display: none;
 
 <div id="rct-microbiome-analysis" class="section level1">
 <h1>RCT microbiome analysis</h1>
-<p>Function documentation for comparing microbiome and resistome
-differences between treatment arms. Example code uses simulated count
-data.</p>
+<p>Collected function documentation for comparing differences in
+microbiomes and resistomes of treatment arms. Example code uses
+simulated count data. All scripts include commented functions with
+documentation.</p>
 <p><br></p>
 </div>
 <div id="deseq2-with-fdr" class="section level1">
@@ -369,50 +370,50 @@ data.</p>
 <p><strong>Arguments</strong></p>
 <p>df</p>
 <ul>
-<li>dataset with atleast IDs, treatment, and counts of all integer
+<li>Dataset with atleast IDs, treatment, and counts of all integer
 values. requires an ID variable in the first column and treatment
 variable directly before first count column</li>
 </ul>
 <p>tx_col</p>
 <ul>
-<li>treatment column index, must be directly before the count data
+<li>Treatment column index, must be directly before the count data
 starts</li>
 </ul>
 <p>alpha</p>
 <ul>
-<li>significance cutoff used for optimizing the independent filtering.
+<li>Significance cutoff used for optimizing the independent filtering.
 default = 0.05, but default is 0.1 for the package function. set to
 adjusted p-value cutoff</li>
 </ul>
 <p>test</p>
 <ul>
-<li>either “Wald” for cross-sectional, or “LRT” for longitudinal</li>
+<li>Either “Wald” for cross-sectional, or “LRT” for longitudinal</li>
 </ul>
 <p>time_col</p>
 <ul>
-<li>optional column index of timepoint data (must be indexed between ID
+<li>Optional column index of timepoint data (must be indexed between ID
 and treatment variables)</li>
 </ul>
 <p><br></p>
 </div>
 <div id="description-1" class="section level3">
 <h3>Description</h3>
-<p>Display DESeq output in a cleaner, more easy to work with way</p>
+<p>Display DESeq output in a cleaner, more easy to work with way.</p>
 <p><strong>Usage</strong></p>
 <p><code>display_deseq_results(mod, vars, var_label)</code></p>
 <p><strong>Arguments</strong></p>
 <p>mod</p>
 <ul>
-<li>model output from my <code>do_deseq()</code> function or package
+<li>Model output from my <code>do_deseq()</code> function or package
 <code>results(DESeq())</code></li>
 </ul>
 <p>vars</p>
 <ul>
-<li>the names of which variables to include in the output table</li>
+<li>The names of which variables to include in the output table</li>
 </ul>
 <p>var_label</p>
 <ul>
-<li>what to name the column containing vars as rows</li>
+<li>What to name the column containing vars as rows</li>
 </ul>
 <p><br></p>
 </div>
@@ -437,7 +438,7 @@ simpson.</p>
 <p><strong>Arguments</strong></p>
 <p>v</p>
 <ul>
-<li>vector of counts</li>
+<li>Vector of counts or normalized read numbers</li>
 </ul>
 <p><br></p>
 </div>
@@ -450,43 +451,43 @@ treatment arm, shannon, simpson’s index, and inverse simpson.</p>
 <p><strong>Arguments</strong></p>
 <p>df</p>
 <ul>
-<li>count data with treatment arm in column immediately before counts
+<li>Count data with treatment arm in column immediately before counts
 start</li>
 </ul>
 <p>start_col</p>
 <ul>
-<li>index of first count column</li>
+<li>Index of first count column</li>
 </ul>
 <p><br></p>
 </div>
 <div id="description-4" class="section level3">
 <h3>Description</h3>
 <p>Plot diversity values from <code>calc_diversity()</code> output,
-requires <code>patchwork</code> loaded</p>
+requires <code>patchwork</code> loaded.</p>
 <p><strong>Usage</strong></p>
 <p><code>plot_diversity(dat, xlim, timepoint, groups, colors)</code></p>
 <p><strong>Arguments</strong></p>
 <p>dat</p>
 <ul>
-<li>output table from <code>calc_diversity()</code></li>
+<li>Output table from <code>calc_diversity()</code></li>
 </ul>
 <p>xlim</p>
 <ul>
-<li>manually set limits of x-axis (if you don’t do this, values get
+<li>Manually set limits of x-axis (if you don’t do this, values get
 truncated)</li>
 </ul>
 <p>timepoint</p>
 <ul>
-<li>character string for plot title (e.g. “baseline”, “36
+<li>Character string for plot title (e.g. “baseline”, “36
 months”..)</li>
 </ul>
 <p>groups</p>
 <ul>
-<li>character vector for naming groups in the legend</li>
+<li>Character vector for naming groups in the legend</li>
 </ul>
 <p>colors</p>
 <ul>
-<li>vector of colors matching groups</li>
+<li>Vector of colors matching groups</li>
 </ul>
 <p><br></p>
 </div>
@@ -495,26 +496,26 @@ months”..)</li>
 <h1>PERMANOVA</h1>
 <div id="description-5" class="section level3">
 <h3>Description</h3>
-<p>Combines runs PERMANOVA, comparing groups at a single timepoint</p>
+<p>Combines runs PERMANOVA, comparing groups at a single timepoint.</p>
 <p><strong>Usage</strong></p>
 <p><code>fit_permanova(df, start_col, mthd, perm = 9999)</code></p>
 <p><strong>Arguments</strong></p>
 <p>df</p>
 <ul>
-<li>count data with time variable and group column preceding count
+<li>Count data with time variable and group column preceding count
 columns</li>
 </ul>
 <p>start_col</p>
 <ul>
-<li>first column with counts</li>
+<li>First column with counts</li>
 </ul>
 <p>mthd</p>
 <ul>
-<li>distance measure for <code>vegan::adonis2()</code></li>
+<li>Distance measure for <code>vegan::adonis2()</code></li>
 </ul>
 <p>perm</p>
 <ul>
-<li>number of permutations</li>
+<li>Number of permutations</li>
 </ul>
 <p><br></p>
 </div>
@@ -524,54 +525,54 @@ columns</li>
 <div id="description-6" class="section level3">
 <h3>Description</h3>
 <p>Function returning Eigenvectors, Eigenvalues, and Centroids from
-PCoA</p>
+PCoA.</p>
 <p><strong>Usage</strong></p>
 <p><code>pcoa(df, start_col, method)</code></p>
 <p><strong>Arguments</strong></p>
 <p>df</p>
 <ul>
-<li>count data with time variable and group column preceding count
+<li>Count data with time variable and group column preceding count
 columns</li>
 </ul>
 <p>start_col</p>
 <ul>
-<li>first column with counts</li>
+<li>First column with counts</li>
 </ul>
 <p>method</p>
 <ul>
-<li>distance measure for vegan distance matrix (takes “l1” or “l2”)</li>
+<li>Distance measure for vegan distance matrix (takes “l1” or “l2”)</li>
 </ul>
 <p><br></p>
 </div>
 <div id="description-7" class="section level3">
 <h3>Description</h3>
-<p>Plot Centroids from PCoA1 and PCoA2</p>
+<p>Plot Centroids from PCoA1 and PCoA2.</p>
 <p><strong>Usage</strong></p>
 <p><code>plot_pcoa(vectors, centroids, label, colors = NULL, title_text = NULL, subtitle_text = NULL)</code></p>
 <p><strong>Arguments</strong></p>
 <p>vectors</p>
 <ul>
-<li>eigenvectors from <code>pcoa()</code> output</li>
+<li>Eigenvectors from <code>pcoa()</code> output</li>
 </ul>
 <p>centroids</p>
 <ul>
-<li>centroids from <code>pcoa()</code> output</li>
+<li>Centroids from <code>pcoa()</code> output</li>
 </ul>
 <p>label</p>
 <ul>
-<li>labels for groups in the legend</li>
+<li>Labels for groups in the legend</li>
 </ul>
 <p>colors</p>
 <ul>
-<li>option to manually set group colors</li>
+<li>Option to manually set group colors</li>
 </ul>
 <p>title_text</p>
 <ul>
-<li>optional plot title</li>
+<li>Optional plot title</li>
 </ul>
 <p>subtitle_text</p>
 <ul>
-<li>optional plot subtitle</li>
+<li>Optional plot subtitle</li>
 </ul>
 <p><br></p>
 </div>
@@ -592,16 +593,16 @@ a list</li>
 </ul>
 <p>var_col</p>
 <ul>
-<li>the column of the result variable to be represented (e.g. column
+<li>The column of the result variable to be represented (e.g. column
 with <code>padj</code>, etc)</li>
 </ul>
 <p>var_name</p>
 <ul>
-<li>name of the variable in var_col</li>
+<li>Name of the variable in var_col</li>
 </ul>
 <p>bind</p>
 <ul>
-<li>if no key variable for joining exists, use bind = TRUE to bind
+<li>If no key variable for joining exists, use bind = TRUE to bind
 columns instead of joining</li>
 </ul>
 <p><br></p>
@@ -615,19 +616,19 @@ components.</p>
 <p><strong>Arguments</strong></p>
 <p>centroids</p>
 <ul>
-<li>centroid coordinate output from <code>pcoa()</code></li>
+<li>Centroid coordinate output from <code>pcoa()</code></li>
 </ul>
 <p>colors</p>
 <ul>
-<li>vector of colors matching number of timepoints</li>
+<li>Vector of colors matching number of timepoints</li>
 </ul>
 <p>labels</p>
 <ul>
-<li>text to label reach centroid with timepoint</li>
+<li>Text to label reach centroid with timepoint</li>
 </ul>
 <p>title_text</p>
 <ul>
-<li>add an optional title</li>
+<li>Add an optional title</li>
 </ul>
 <p><br></p>
 </div>

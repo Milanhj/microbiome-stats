@@ -1,8 +1,8 @@
 
 # RCT microbiome analysis
 
-Function documentation for comparing microbiome and resistome differences between treatment arms.
-Example code uses simulated count data.
+Collected function documentation for comparing differences in microbiomes and resistomes of treatment arms.
+Example code uses simulated count data. All scripts include commented functions with documentation. 
 
 <br>
 
@@ -20,30 +20,30 @@ Using `DESeq2` for differential expression analysis.
 
 df
 
--   dataset with atleast IDs, treatment, and counts of all integer values.
+-   Dataset with atleast IDs, treatment, and counts of all integer values.
 requires an ID variable in the first column and treatment variable directly before first count column
 
 tx_col
 
--   treatment column index, must be directly before the count data starts
+-   Treatment column index, must be directly before the count data starts
 
 alpha
 
--   significance cutoff used for optimizing the independent filtering. default = 0.05, but default is 0.1 for the package function. set to adjusted p-value cutoff
+-   Significance cutoff used for optimizing the independent filtering. default = 0.05, but default is 0.1 for the package function. set to adjusted p-value cutoff
 
 test
 
--   either "Wald" for cross-sectional, or "LRT" for longitudinal
+-   Either "Wald" for cross-sectional, or "LRT" for longitudinal
 
 time_col
 
--   optional column index of timepoint data (must be indexed between ID and treatment variables)
+-   Optional column index of timepoint data (must be indexed between ID and treatment variables)
 
 <br>
 
 ### Description
 
-Display DESeq output in a cleaner, more easy to work with way
+Display DESeq output in a cleaner, more easy to work with way.
 
 
 **Usage**
@@ -54,15 +54,15 @@ Display DESeq output in a cleaner, more easy to work with way
 
 mod
 
--   model output from my `do_deseq()` function or package `results(DESeq())`
+-   Model output from my `do_deseq()` function or package `results(DESeq())`
 
 vars
 
--   the names of which variables to include in the output table
+-   The names of which variables to include in the output table
 
 var_label
 
--   what to name the column containing vars as rows
+-   What to name the column containing vars as rows
 
 <br>
 
@@ -90,7 +90,7 @@ Simpson's $L_2$ diversity returns a vector with *[1]* simpson's index, and *[2]*
 
 v
 
--   vector of counts
+-   Vector of counts or normalized read numbers
 
 <br>
 
@@ -107,17 +107,17 @@ Output table with treatment arm, shannon, simpson's index, and inverse simpson.
 
 df
 
--   count data with treatment arm in column immediately before counts start
+-   Count data with treatment arm in column immediately before counts start
 
 start_col
 
--   index of first count column
+-   Index of first count column
 
 <br>
 
 ### Description
 
-Plot diversity values from `calc_diversity()` output, requires `patchwork` loaded
+Plot diversity values from `calc_diversity()` output, requires `patchwork` loaded.
 
 **Usage**
 
@@ -127,23 +127,23 @@ Plot diversity values from `calc_diversity()` output, requires `patchwork` loade
 
 dat
 
--   output table from `calc_diversity()`
+-   Output table from `calc_diversity()`
 
 xlim
 
--   manually set limits of x-axis (if you don't do this, values get truncated)
+-   Manually set limits of x-axis (if you don't do this, values get truncated)
 
 timepoint
 
--   character string for plot title (e.g. "baseline", "36 months"..)
+-   Character string for plot title (e.g. "baseline", "36 months"..)
 
 groups
 
--   character vector for naming groups in the legend
+-   Character vector for naming groups in the legend
 
 colors
 
--   vector of colors matching groups
+-   Vector of colors matching groups
 
 <br>
 
@@ -151,7 +151,7 @@ colors
 
 ### Description
 
-Combines runs PERMANOVA, comparing groups at a single timepoint
+Combines runs PERMANOVA, comparing groups at a single timepoint.
 
 **Usage**
 
@@ -161,19 +161,19 @@ Combines runs PERMANOVA, comparing groups at a single timepoint
 
 df
 
--   count data with time variable and group column preceding count columns
+-   Count data with time variable and group column preceding count columns
 
 start_col
 
--   first column with counts
+-   First column with counts
 
 mthd
 
--   distance measure for `vegan::adonis2()`
+-   Distance measure for `vegan::adonis2()`
 
 perm
 
--   number of permutations
+-   Number of permutations
 
 <br>
 
@@ -181,7 +181,7 @@ perm
 
 ### Description
 
-Function returning Eigenvectors, Eigenvalues, and Centroids from PCoA
+Function returning Eigenvectors, Eigenvalues, and Centroids from PCoA.
 
 **Usage**
 
@@ -191,21 +191,21 @@ Function returning Eigenvectors, Eigenvalues, and Centroids from PCoA
 
 df
 
--   count data with time variable and group column preceding count columns
+-   Count data with time variable and group column preceding count columns
 
 start_col
 
--   first column with counts
+-   First column with counts
 
 method
 
--   distance measure for vegan distance matrix (takes "l1" or "l2")
+-   Distance measure for vegan distance matrix (takes "l1" or "l2")
 
 <br>
 
 ### Description
 
-Plot Centroids from PCoA1 and PCoA2
+Plot Centroids from PCoA1 and PCoA2.
 
 **Usage**
 
@@ -215,27 +215,27 @@ Plot Centroids from PCoA1 and PCoA2
 
 vectors
 
--   eigenvectors from `pcoa()` output
+-   Eigenvectors from `pcoa()` output
 
 centroids
 
--   centroids from `pcoa()` output
+-   Centroids from `pcoa()` output
 
 label
 
--   labels for groups in the legend
+-   Labels for groups in the legend
 
 colors
 
--   option to manually set group colors
+-   Option to manually set group colors
 
 title_text
 
--   optional plot title
+-   Optional plot title
 
 subtitle_text
 
--   optional plot subtitle
+-   Optional plot subtitle
 
 <br>
 
@@ -257,15 +257,15 @@ list_results
 
 var_col
 
--   the column of the result variable to be represented (e.g. column with `padj`, etc)
+-   The column of the result variable to be represented (e.g. column with `padj`, etc)
 
 var_name
 
--   name of the variable in var_col
+-   Name of the variable in var_col
 
 bind
 
--   if no key variable for joining exists, use bind = TRUE to bind columns instead of joining
+-   If no key variable for joining exists, use bind = TRUE to bind columns instead of joining
 
 <br>
 
@@ -281,18 +281,18 @@ Plot a 3D scatterplot for visualizing time centroids on 3 principal components.
 
 centroids
 
--   centroid coordinate output from `pcoa()`
+-   Centroid coordinate output from `pcoa()`
 
 colors
 
--   vector of colors matching number of timepoints
+-   Vector of colors matching number of timepoints
 
 labels
 
--   text to label reach centroid with timepoint
+-   Text to label reach centroid with timepoint
 
 title_text
 
--   add an optional title
+-   Add an optional title
 
 <br>
