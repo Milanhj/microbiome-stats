@@ -13,21 +13,46 @@ library(plotly)
   #> list_results: fit_permanova() output for each timepoint collected in a list
   #> var_col: the column of the result variable to be represented (e.g. column with `padj`, etc)
   #> var_name: name of the variable in var_col
+  #> time_name: manually set the name of timepoints
   #> bind: if no key variable for joining exists, use bind = TRUE to bind columns instead of joining
 
-combine_table <- function(list_results, var_col, var_name, bind = FALSE){
+combine_table <- function(list_results, var_col, var_name,
+                          time_name = NULL, bind = FALSE){
   
-  # Loop to rename and store just variable of interest
-  new_list <- list()
-  for (i in 1:length(list_results)){
+  # if time names are not specified use indices 0-n
+  if (is.null(time_name)){
     
-    tib_i <- list_results[[i]][, c(1, var_col)]
-    # Change the name of the variable to reflect timepoint
-    colnames(tib_i)[2] <- str_c(var_name, as.character(i-1), sep = "_")
-    # Store in the new list
-    new_list[[i]] <- tib_i
+    # Loop to rename and store just variable of interest
+    new_list <- list()
+    for (i in 1:length(list_results)){
+      
+      # tibble with column 1 and result variable
+      tib_i <- list_results[[i]][, c(1, var_col)]
+      # Change the name of the variable to reflect timepoint
+      colnames(tib_i)[2] <- str_c(var_name, as.character(i-1), sep = "_")
+      # Store in the new list
+      new_list[[i]] <- tib_i
+      
+    } # end for
     
-  } # end for
+  } else {
+    
+    # Loop to rename and store just variable of interest
+    new_list <- list()
+    for (i in 1:length(list_results)){
+      
+      # tibble with column 1 and result variable
+      tib_i <- list_results[[i]][, c(1, var_col)]
+      # Time name
+      timep <- time_name[i]
+      # Change the name of the variable to reflect timepoint
+      colnames(tib_i)[2] <- str_c(var_name, timep, sep = "_")
+      # Store in the new list
+      new_list[[i]] <- tib_i
+      
+    } # end for
+    
+  } # end else
   
   if (bind == FALSE){ # Left Joining when a key variable exists
     
@@ -64,6 +89,8 @@ combine_table <- function(list_results, var_col, var_name, bind = FALSE){
   return(tib_full)
   
 } # end function
+
+
 
 
 

@@ -263,6 +263,11 @@ var_name
 
 -   Name of the variable in var_col
 
+time_name
+
+- Manually set the name of timepoint labels appended at the end of var_name. 
+Default is numerical order beginning at 0 (e.g. 0, 1, ... n - 1)
+
 bind
 
 -   If no key variable for joining exists, use bind = TRUE to bind columns instead of joining
