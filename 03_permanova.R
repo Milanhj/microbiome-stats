@@ -16,17 +16,17 @@ counts <- read_rds("data/simulated_counts.rds")
 
 
 # Combines runs PERMANOVA, comparing groups at a single timepoint
-  #> df: count data with time variable and group column preceding count columns
+  #> dat: count data with time variable and group column preceding count columns
   #> start_col: first column with counts
   #> mthd: distance measure for `vegan::adonis2()`
   #> perm: number of permutations
 
-fit_permanova <- function(df, start_col, mthd, perm = 9999){
+fit_permanova <- function(dat, start_col, mthd, perm = 9999){
   
   # Filter data
-  arm_dat <- df[,c(1:start_col-1)]
+  arm_dat <- dat[,c(1:start_col-1)]
   # Diversity data as matrix
-  count_dat <- as.matrix(df[,-c(1:start_col-1)])
+  count_dat <- as.matrix(dat[,-c(1:start_col-1)])
   
   # Treatment arm
   arm <- as.matrix(arm_dat[,start_col-1])

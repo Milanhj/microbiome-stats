@@ -18,20 +18,20 @@ counts <- read_rds("data/simulated_counts.rds")
 
 
 # Function returning Eigenvectors, Eigenvalues, and Centroids from PCoA
-  #> df: count data with time variable and group column preceding count columns
+  #> dat: count data with time variable and group column preceding count columns
   #> start_col: first column with counts
   #> method: distance measure for vegan distance matrix (takes "l1" or "l2")
 
-pcoa <- function(df, start_col, method){
+pcoa <- function(dat, start_col, method){
   
   # Sort by group
-  df <- arrange(df, df[,start_col-1][[1]])
+  dat <- arrange(dat, dat[,start_col-1][[1]])
   
   # Store just diversity variables as data
-  data <- df[, start_col:ncol(df)]
+  data <- dat[, start_col:ncol(dat)]
   
   # Store ID variables
-  arm <- df[, 1:start_col-1]
+  arm <- dat[, 1:start_col-1]
   
   # Compute distance matrix using selected norm as method and store as dis
   if (method == "l1"){

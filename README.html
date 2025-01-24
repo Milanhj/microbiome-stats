@@ -368,7 +368,7 @@ documentation.</p>
 <p><strong>Usage</strong></p>
 <p><code>do_deseq(dat, stop_col, formula, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL)</code>:</p>
 <p><strong>Arguments</strong></p>
-<p>df</p>
+<p>dat</p>
 <ul>
 <li>Dataset with IDs, metadata for design matrix, and counts of all
 integer values. requires an ID variable in the first column and all meta
@@ -500,9 +500,9 @@ simpson.</p>
 <p>Calculate all diversity indices simultaneously. Output table with
 treatment arm, shannon, simpson’s index, and inverse simpson.</p>
 <p><strong>Usage</strong></p>
-<p><code>calc_diversity(df, start_col)</code></p>
+<p><code>calc_diversity(dat, start_col)</code></p>
 <p><strong>Arguments</strong></p>
-<p>df</p>
+<p>dat</p>
 <ul>
 <li>Count data with treatment arm in column immediately before counts
 start</li>
@@ -551,9 +551,9 @@ months”..)</li>
 <h3>Description</h3>
 <p>Combines runs PERMANOVA, comparing groups at a single timepoint.</p>
 <p><strong>Usage</strong></p>
-<p><code>fit_permanova(df, start_col, mthd, perm = 9999)</code></p>
+<p><code>fit_permanova(dat, start_col, mthd, perm = 9999)</code></p>
 <p><strong>Arguments</strong></p>
-<p>df</p>
+<p>dat</p>
 <ul>
 <li>Count data with time variable and group column preceding count
 columns</li>
@@ -580,9 +580,9 @@ columns</li>
 <p>Function returning Eigenvectors, Eigenvalues, and Centroids from
 PCoA.</p>
 <p><strong>Usage</strong></p>
-<p><code>pcoa(df, start_col, method)</code></p>
+<p><code>pcoa(dat, start_col, method)</code></p>
 <p><strong>Arguments</strong></p>
-<p>df</p>
+<p>dat</p>
 <ul>
 <li>Count data with time variable and group column preceding count
 columns</li>

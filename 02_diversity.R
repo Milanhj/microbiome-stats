@@ -82,16 +82,16 @@ simpson <- function(v){
 
 # Calculate all diversity indices simultaneously
   #> Output table with treatment arm, shannon, simpson's index, and inverse simpson
-  #> df: Count data with treatment arm in column immediately before counts start
+  #> dat: Count data with treatment arm in column immediately before counts start
   #> start_col: Index of first count column 
 
-calc_diversity <- function(df, start_col){
+calc_diversity <- function(dat, start_col){
   
   # Store just diversity variables as data
-  data <- as.data.frame(df[, start_col:ncol(df)])
+  data <- as.data.frame(dat[, start_col:ncol(dat)])
   
   # Store ID variables
-  arm <- as.data.frame(df[, start_col-1])
+  arm <- as.data.frame(dat[, start_col-1])
   
   # Create empty matrix to store values
   div_out <- matrix(nrow = nrow(arm), ncol = 3,

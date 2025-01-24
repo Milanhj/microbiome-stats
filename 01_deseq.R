@@ -276,15 +276,18 @@ fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
 out_wald <- do_deseq(counts, stop_col = 3, alpha = 0.05, test = "Wald",
                      formula = ~ group, sf_type = "median_ratio")
 
-# Visualize results
+# Visualize results for fdr = FALSE
 result_wald <- display_deseq_results(
-  out_wald, vars = count_col_names, var_label = "x")
+  out_wald, vars = count_col_names, var_label = "x", fdr = FALSE)
+
+result_wald
 
 
 # Visualize results for fdr = TRUE
-result_wald <- display_deseq_results(
+result_wald_fdr <- display_deseq_results(
   out_wald, vars = count_col_names, var_label = "x", fdr = TRUE)
 
+result_wald_fdr
 
 ### tx and time -------------------
 
@@ -296,11 +299,11 @@ formulas <- list(c(~ timepoint + group), c(~ group + timepoint))
 result_group_time <- fit_deseq2(dat = counts, stop_col = 3, formulas = formulas, 
                                 alpha = 0.05, test = "Wald", 
                                 sf_type = "median_ratio",
-                                na.rm = FALSE, fdr = FALSE,
+                                na.rm = FALSE, fdr = TRUE,
                                 vars = count_col_names, 
                                 var_label = "x", digits = 4
            )
-
+result_group_time
 
 ## Longitudinal LRT --------------------------------
 

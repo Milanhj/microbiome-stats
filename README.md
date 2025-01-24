@@ -18,7 +18,7 @@ Using `DESeq2` for differential expression analysis.
 
 **Arguments**
 
-df
+dat
 
 -   Dataset with IDs, metadata for design matrix, and counts of all integer values.
 requires an ID variable in the first column and all meta data before first count column
@@ -158,11 +158,11 @@ Output table with treatment arm, shannon, simpson's index, and inverse simpson.
 
 **Usage**
 
-`calc_diversity(df, start_col)`
+`calc_diversity(dat, start_col)`
 
 **Arguments**
 
-df
+dat
 
 -   Count data with treatment arm in column immediately before counts start
 
@@ -212,11 +212,11 @@ Combines runs PERMANOVA, comparing groups at a single timepoint.
 
 **Usage**
 
-`fit_permanova(df, start_col, mthd, perm = 9999)`
+`fit_permanova(dat, start_col, mthd, perm = 9999)`
 
 **Arguments**
 
-df
+dat
 
 -   Count data with time variable and group column preceding count columns
 
@@ -242,11 +242,11 @@ Function returning Eigenvectors, Eigenvalues, and Centroids from PCoA.
 
 **Usage**
 
-`pcoa(df, start_col, method)`
+`pcoa(dat, start_col, method)`
 
 **Arguments**
 
-df
+dat
 
 -   Count data with time variable and group column preceding count columns
 
