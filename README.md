@@ -14,18 +14,18 @@ Using `DESeq2` for differential expression analysis.
 
 **Usage**
 
-`do_deseq(df, tx_col, alpha = 0.05, test = "Wald", time_col = NULL)`:
+`do_deseq(dat, stop_col, formula, alpha = 0.05, test = "Wald", sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL)`:
 
 **Arguments**
 
 df
 
--   Dataset with atleast IDs, treatment, and counts of all integer values.
-requires an ID variable in the first column and treatment variable directly before first count column
+-   Dataset with IDs, metadata for design matrix, and counts of all integer values.
+requires an ID variable in the first column and all meta data before first count column
 
-tx_col
+stop_col
 
--   Treatment column index, must be directly before the count data starts
+-   Index for final column of metadata, must be directly before the count data starts
 
 alpha
 
@@ -35,20 +35,38 @@ test
 
 -   Either "Wald" for cross-sectional, or "LRT" for longitudinal
 
-time_col
+sf_type
 
--   Optional column index of timepoint data (must be indexed between ID and treatment variables)
+- Indicates which method to use for estimating size factors. May be set to "median_ratio" for use of the DESeq2
+package default method, or "custom" which estimates size factors with a vector of the total non-human reads in each sample
+
+total_counts
+
+- Optional vector of total counts for custom size factor estimation. Must input a vector of total reads if sf_type = "custom"
+
+reduced
+
+- for LRT, reduced formula without the final interaction term
+
+ordered
+
+- set to TRUE if the design formula contains an ordered categorical variable
+
+
+
 
 <br>
 
 ### Description
 
-Display DESeq output in a cleaner, more easy to work with way.
+Display DESeq output for a single independent variable. 
+Returns a table with the log2foldchange, foldchange, standard error, and p-value
+for each level of the dependent variable.  
 
 
 **Usage**
 
-`display_deseq_results(mod, vars, var_label)`
+`display_deseq_results(mod, vars, var_label, digits = 4, fdr = FALSE, na.rm = FALSE)`
 
 **Arguments**
 
@@ -63,6 +81,45 @@ vars
 var_label
 
 -   What to name the column containing vars as rows
+
+digits
+
+- how many digits to round output values to. default = 4
+
+fdr
+
+- if TRUE, q-values are calculated and returned
+
+na.rm
+
+- option to remove NA rows. Do not set na.rm = TRUE if there are multiple independent variables in the design matrix 
+
+<br>
+
+
+### Description
+
+Function wrapping `do_deseq()` and `display_deseq_results()` together.
+Outputs a list of tables for each variable level (class, gene, etc..) with results for each variable. 
+Used to output DESeq2 results for each variable in a design formula with multiple independent variables.
+
+
+**Usage**
+
+`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, fdr = FALSE, vars, var_label, digits = 4)`
+
+**Arguments**
+
+Same arguments from `do_deseq()` and `display_deseq_results()`.
+
+formulas
+
+- a list of formulas to iterate through. 
+DESeq2 returns results for the final variable in the formula. 
+Must input formulas with condition of interest in the final position for each independent variable.
+
+- formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))
+
 
 <br>
 

@@ -366,18 +366,18 @@ documentation.</p>
 <h3>Description</h3>
 <p>Using <code>DESeq2</code> for differential expression analysis.</p>
 <p><strong>Usage</strong></p>
-<p><code>do_deseq(df, tx_col, alpha = 0.05, test = &quot;Wald&quot;, time_col = NULL)</code>:</p>
+<p><code>do_deseq(dat, stop_col, formula, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL)</code>:</p>
 <p><strong>Arguments</strong></p>
 <p>df</p>
 <ul>
-<li>Dataset with atleast IDs, treatment, and counts of all integer
-values. requires an ID variable in the first column and treatment
-variable directly before first count column</li>
+<li>Dataset with IDs, metadata for design matrix, and counts of all
+integer values. requires an ID variable in the first column and all meta
+data before first count column</li>
 </ul>
-<p>tx_col</p>
+<p>stop_col</p>
 <ul>
-<li>Treatment column index, must be directly before the count data
-starts</li>
+<li>Index for final column of metadata, must be directly before the
+count data starts</li>
 </ul>
 <p>alpha</p>
 <ul>
@@ -389,18 +389,36 @@ adjusted p-value cutoff</li>
 <ul>
 <li>Either “Wald” for cross-sectional, or “LRT” for longitudinal</li>
 </ul>
-<p>time_col</p>
+<p>sf_type</p>
 <ul>
-<li>Optional column index of timepoint data (must be indexed between ID
-and treatment variables)</li>
+<li>Indicates which method to use for estimating size factors. May be
+set to “median_ratio” for use of the DESeq2 package default method, or
+“custom” which estimates size factors with a vector of the total
+non-human reads in each sample</li>
+</ul>
+<p>total_counts</p>
+<ul>
+<li>Optional vector of total counts for custom size factor estimation.
+Must input a vector of total reads if sf_type = “custom”</li>
+</ul>
+<p>reduced</p>
+<ul>
+<li>for LRT, reduced formula without the final interaction term</li>
+</ul>
+<p>ordered</p>
+<ul>
+<li>set to TRUE if the design formula contains an ordered categorical
+variable</li>
 </ul>
 <p><br></p>
 </div>
 <div id="description-1" class="section level3">
 <h3>Description</h3>
-<p>Display DESeq output in a cleaner, more easy to work with way.</p>
+<p>Display DESeq output for a single independent variable. Returns a
+table with the log2foldchange, foldchange, standard error, and p-value
+for each level of the dependent variable.</p>
 <p><strong>Usage</strong></p>
-<p><code>display_deseq_results(mod, vars, var_label)</code></p>
+<p><code>display_deseq_results(mod, vars, var_label, digits = 4, fdr = FALSE, na.rm = FALSE)</code></p>
 <p><strong>Arguments</strong></p>
 <p>mod</p>
 <ul>
@@ -415,12 +433,47 @@ and treatment variables)</li>
 <ul>
 <li>What to name the column containing vars as rows</li>
 </ul>
+<p>digits</p>
+<ul>
+<li>how many digits to round output values to. default = 4</li>
+</ul>
+<p>fdr</p>
+<ul>
+<li>if TRUE, q-values are calculated and returned</li>
+</ul>
+<p>na.rm</p>
+<ul>
+<li>option to remove NA rows. Do not set na.rm = TRUE if there are
+multiple independent variables in the design matrix</li>
+</ul>
+<p><br></p>
+</div>
+<div id="description-2" class="section level3">
+<h3>Description</h3>
+<p>Function wrapping <code>do_deseq()</code> and
+<code>display_deseq_results()</code> together. Outputs a list of tables
+for each variable level (class, gene, etc..) with results for each
+variable. Used to output DESeq2 results for each variable in a design
+formula with multiple independent variables.</p>
+<p><strong>Usage</strong></p>
+<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, fdr = FALSE, vars, var_label, digits = 4)</code></p>
+<p><strong>Arguments</strong></p>
+<p>Same arguments from <code>do_deseq()</code> and
+<code>display_deseq_results()</code>.</p>
+<p>formulas</p>
+<ul>
+<li><p>a list of formulas to iterate through. DESeq2 returns results for
+the final variable in the formula. Must input formulas with condition of
+interest in the final position for each independent variable.</p></li>
+<li><p>formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3
++ x1))</p></li>
+</ul>
 <p><br></p>
 </div>
 </div>
 <div id="diversity" class="section level1">
 <h1>Diversity</h1>
-<div id="description-2" class="section level3">
+<div id="description-3" class="section level3">
 <h3>Description</h3>
 <p><span class="math display">\[L_{\alpha} = \left( \sum^n_{i \ = \ 1}
 P_i^{\ \ \alpha} \right) ^{\frac{1}{1 \ - \ \alpha}}\]</span></p>
@@ -442,7 +495,7 @@ simpson.</p>
 </ul>
 <p><br></p>
 </div>
-<div id="description-3" class="section level3">
+<div id="description-4" class="section level3">
 <h3>Description</h3>
 <p>Calculate all diversity indices simultaneously. Output table with
 treatment arm, shannon, simpson’s index, and inverse simpson.</p>
@@ -460,7 +513,7 @@ start</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-4" class="section level3">
+<div id="description-5" class="section level3">
 <h3>Description</h3>
 <p>Plot diversity values from <code>calc_diversity()</code> output,
 requires <code>patchwork</code> loaded.</p>
@@ -494,7 +547,7 @@ months”..)</li>
 </div>
 <div id="permanova" class="section level1">
 <h1>PERMANOVA</h1>
-<div id="description-5" class="section level3">
+<div id="description-6" class="section level3">
 <h3>Description</h3>
 <p>Combines runs PERMANOVA, comparing groups at a single timepoint.</p>
 <p><strong>Usage</strong></p>
@@ -522,7 +575,7 @@ columns</li>
 </div>
 <div id="pcoa" class="section level1">
 <h1>PCoA</h1>
-<div id="description-6" class="section level3">
+<div id="description-7" class="section level3">
 <h3>Description</h3>
 <p>Function returning Eigenvectors, Eigenvalues, and Centroids from
 PCoA.</p>
@@ -544,7 +597,7 @@ columns</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-7" class="section level3">
+<div id="description-8" class="section level3">
 <h3>Description</h3>
 <p>Plot Centroids from PCoA1 and PCoA2.</p>
 <p><strong>Usage</strong></p>
@@ -579,7 +632,7 @@ columns</li>
 </div>
 <div id="longitudinal-results" class="section level1">
 <h1>Longitudinal Results</h1>
-<div id="description-8" class="section level3">
+<div id="description-9" class="section level3">
 <h3>Description</h3>
 <p>Combine p-value outputs for different timepoints in a single
 table.</p>
@@ -613,7 +666,7 @@ columns instead of joining</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-9" class="section level3">
+<div id="description-10" class="section level3">
 <h3>Description</h3>
 <p>Plot a 3D scatterplot for visualizing time centroids on 3 principal
 components.</p>
