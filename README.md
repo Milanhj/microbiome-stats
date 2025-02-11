@@ -66,7 +66,7 @@ for each level of the dependent variable.
 
 **Usage**
 
-`display_deseq_results(mod, vars, var_label, digits = 4, fdr = FALSE, na.rm = FALSE)`
+`display_deseq_results(mod, vars, var_label, digits = 4, p.adjust.method = NULL, na.rm = FALSE)`
 
 **Arguments**
 
@@ -86,9 +86,9 @@ digits
 
 - how many digits to round output values to. default = 4
 
-fdr
+p.adjust.method
 
-- if TRUE, q-values are calculated and returned
+- optional argument for p.adjust method, if NULL, no values are returned. 
 
 na.rm
 
@@ -106,7 +106,7 @@ Used to output DESeq2 results for each variable in a design formula with multipl
 
 **Usage**
 
-`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, fdr = FALSE, vars, var_label, digits = 4)`
+`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, vars, var_label, digits = 4)`
 
 **Arguments**
 
@@ -119,6 +119,11 @@ DESeq2 returns results for the final variable in the formula.
 Must input formulas with condition of interest in the final position for each independent variable.
 
 - formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))
+
+
+p.adjust.method
+
+- method for p.adjust(). If NULL, no values are returned
 
 
 <br>

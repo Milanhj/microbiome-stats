@@ -418,7 +418,7 @@ variable</li>
 table with the log2foldchange, foldchange, standard error, and p-value
 for each level of the dependent variable.</p>
 <p><strong>Usage</strong></p>
-<p><code>display_deseq_results(mod, vars, var_label, digits = 4, fdr = FALSE, na.rm = FALSE)</code></p>
+<p><code>display_deseq_results(mod, vars, var_label, digits = 4, p.adjust.method = NULL, na.rm = FALSE)</code></p>
 <p><strong>Arguments</strong></p>
 <p>mod</p>
 <ul>
@@ -437,9 +437,10 @@ for each level of the dependent variable.</p>
 <ul>
 <li>how many digits to round output values to. default = 4</li>
 </ul>
-<p>fdr</p>
+<p>p.adjust.method</p>
 <ul>
-<li>if TRUE, q-values are calculated and returned</li>
+<li>optional argument for p.adjust method, if NULL, no values are
+returned.</li>
 </ul>
 <p>na.rm</p>
 <ul>
@@ -456,7 +457,7 @@ for each variable level (class, gene, etc..) with results for each
 variable. Used to output DESeq2 results for each variable in a design
 formula with multiple independent variables.</p>
 <p><strong>Usage</strong></p>
-<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, fdr = FALSE, vars, var_label, digits = 4)</code></p>
+<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, vars, var_label, digits = 4)</code></p>
 <p><strong>Arguments</strong></p>
 <p>Same arguments from <code>do_deseq()</code> and
 <code>display_deseq_results()</code>.</p>
@@ -467,6 +468,10 @@ the final variable in the formula. Must input formulas with condition of
 interest in the final position for each independent variable.</p></li>
 <li><p>formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3
 + x1))</p></li>
+</ul>
+<p>p.adjust.method</p>
+<ul>
+<li>method for p.adjust(). If NULL, no values are returned</li>
 </ul>
 <p><br></p>
 </div>

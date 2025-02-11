@@ -151,10 +151,12 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
   #> vars: the names of which variables to include in the output table
   #> var_label: what to name the column containing vars as rows
   #> digits: how many digits to round to
-  #> fdr: if TRUE, q-values are calculated and returned
+  #> p.adjust.method: whether or not to correct for multiple comparisons
+    #> string for which p.adjust method to use
   #> na.rm: if TRUE, NA rows are removed
-display_deseq_results <- function(mod, vars, var_label, digits = 4, 
-                                  fdr = FALSE, na.rm = FALSE){
+display_deseq_results <- function(mod, vars, var_label, digits = NULL, 
+                                  p.adjust.method = NULL, na.rm = FALSE){
+  
   # Matrix to store Values
   pvals <- matrix(
     nrow = length(rownames(mod)),
@@ -162,13 +164,26 @@ display_deseq_results <- function(mod, vars, var_label, digits = 4,
     dimnames = list(NULL, c(var_label, "log2foldchange", "lfcSE", "p_value")))
   
   for (i in 1:length(rownames(mod))){
+    
     row_name <- rownames(mod)[i]
+    
     if (any(row_name == vars)){
-      pvals[i, 1] <- row_name
-      pvals[i, 2] <- round(mod$log2FoldChange[i], digits = digits)
-      pvals[i, 3] <- round(mod$lfcSE[i], digits = digits)
-      pvals[i, 4] <- round(mod$pvalue[i], digits = digits)
+      
+      if (is.null(digits)) { # don't round
+        pvals[i, 1] <- row_name
+        pvals[i, 2] <- mod$log2FoldChange[i]
+        pvals[i, 3] <- mod$lfcSE[i]
+        pvals[i, 4] <- mod$pvalue[i]
+        
+      } else{ # Round to digits
+        pvals[i, 1] <- row_name
+        pvals[i, 2] <- round(mod$log2FoldChange[i], digits = digits)
+        pvals[i, 3] <- round(mod$lfcSE[i], digits = digits)
+        pvals[i, 4] <- round(mod$pvalue[i], digits = digits)
+      } # end ifelse 2
+      
     } else { next }
+    
   } # end loop
   
   if (na.rm){ # remove the NA levels
@@ -186,20 +201,26 @@ display_deseq_results <- function(mod, vars, var_label, digits = 4,
       p_value = as.numeric(p_value),
       lfcSE = as.numeric(lfcSE),
       log2foldchange = as.numeric(log2foldchange),
-      foldchange = round(2^log2foldchange, digits = digits)
+      foldchange = 2^log2foldchange
     ) %>% 
     relocate(foldchange, .after = log2foldchange) %>%
     arrange(var_label)
   
-  # Run an optional FDR
-  if (fdr == TRUE) {
+  if (!is.null(digits)){
     pvals_tibble <- pvals_tibble %>% 
-      mutate(padj = round(p.adjust(p_value, method = "fdr"), 
-                          digits = digits))
+      mutate(foldchange = round(foldchange, digits))
+  }
+  
+  # Run an optional FDR
+  if (!is.null(p.adjust.method)) {
+    pvals_tibble <- pvals_tibble %>% 
+      mutate(p.adjust.method = p.adjust(p_value, method = p.adjust.method) 
+      )
   } 
+  
   return(pvals_tibble)
+  
 } # end function
-
 
 
 # fit_deseq2(): do_deseq and display_deseq_results wrapped together
@@ -207,8 +228,8 @@ display_deseq_results <- function(mod, vars, var_label, digits = 4,
 # Use this function to output results for each variable in a design formula with multiple independent variables
 fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
                        sf_type, total_counts = NULL,
-                       ordered = FALSE, reduced = NULL, 
-                       na.rm = FALSE, fdr = FALSE,
+                       ordered = FALSE, reduced = NULL, na.rm = FALSE,
+                       p.adjust.method = NULL,
                        vars, var_label, digits = 4){
   
   formula_outs <- list()
@@ -220,8 +241,9 @@ fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
                         formula = formulas[[i]][[1]], test = test) 
     
     # Organize raw output into a easier table
-    formula_outs[[i]] <- display_deseq_results( 
-      raw_out, vars = vars, var_label, digits, fdr = fdr, na.rm = na.rm
+    formula_outs[[i]] <- display_deseq_results(
+      raw_out, vars = vars, var_label, digits, 
+      p.adjust.method = p.adjust.method, na.rm = na.rm
     )
     # Add the name of the variable to the list
     covs <- str_split_1(
@@ -240,25 +262,28 @@ fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
                         matrix(nrow = length(formula_outs),
                                ncol = ncol(formula_outs[[1]]),
                                dimnames = list(NULL, names(formula_outs[[1]])))
-                        
     ) # 5 cols
     for(j in 1:length(formula_outs)){
       # Fill matrix with data for a particular var level
-      store_dat[j,2] <- formula_outs[[j]][i,1][[1]]
-      store_dat[j,3] <- formula_outs[[j]][i,2][[1]]
-      store_dat[j,4] <- formula_outs[[j]][i,3][[1]]
-      store_dat[j,5] <- formula_outs[[j]][i,4][[1]] 
-      store_dat[j,6] <- formula_outs[[j]][i,5][[1]] 
+      store_dat[j,2] <- formula_outs[[j]][i,1][[1]] # [i,1]
+      store_dat[j,3] <- formula_outs[[j]][i,2][[1]] # [i,1]
+      store_dat[j,4] <- formula_outs[[j]][i,3][[1]] # [i,1]
+      store_dat[j,5] <- formula_outs[[j]][i,4][[1]] # [i,1]
+      store_dat[j,6] <- formula_outs[[j]][i,5][[1]] # [i,1]
       
-      # If we did an fdr, store it in a 7th column
-      if(fdr){store_dat[j,7] <- formula_outs[[j]][i,6][[1]] }
+      if (!is.null(p.adjust.method)){
+        store_dat[j,7] <- formula_outs[[j]][i,6][[1]]
+      }
       
     } # end for j
+    
     # Fill slot for each level
     list_results[[i]] <- as_tibble(store_dat)
+    
   } # end for i
   
   return(list_results)
+  
 } # end function
 
 
@@ -276,16 +301,17 @@ fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
 out_wald <- do_deseq(counts, stop_col = 3, alpha = 0.05, test = "Wald",
                      formula = ~ group, sf_type = "median_ratio")
 
-# Visualize results for fdr = FALSE
+# Visualize results for p.adjust.method = NULL
 result_wald <- display_deseq_results(
-  out_wald, vars = count_col_names, var_label = "x", fdr = FALSE)
+  out_wald, vars = count_col_names, var_label = "x",
+  p.adjust.method = NULL)
 
 result_wald
 
 
-# Visualize results for fdr = TRUE
+# Visualize results for p.adjust.method 
 result_wald_fdr <- display_deseq_results(
-  out_wald, vars = count_col_names, var_label = "x", fdr = TRUE)
+  out_wald, vars = count_col_names, var_label = "x", p.adjust.method = "fdr")
 
 result_wald_fdr
 
@@ -299,7 +325,7 @@ formulas <- list(c(~ timepoint + group), c(~ group + timepoint))
 result_group_time <- fit_deseq2(dat = counts, stop_col = 3, formulas = formulas, 
                                 alpha = 0.05, test = "Wald", 
                                 sf_type = "median_ratio",
-                                na.rm = FALSE, fdr = TRUE,
+                                na.rm = FALSE, p.adjust.method = "fdr",
                                 vars = count_col_names, 
                                 var_label = "x", digits = 4
            )
