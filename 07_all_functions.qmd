@@ -1,0 +1,1070 @@
+---
+title: "Microbiome Functions Summary"
+author: "Milan Hilde-Jones"
+date: "January 24, 2025"
+format:
+  html:
+    
+    toc: true
+    embed-resources: true
+    code-fold: true
+    link-external-newwindow: true
+execute:
+  
+  warning: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: load-data-pckgs
+#| eval: false
+
+# Load Packages here
+library(tidyverse)
+library(DESeq2)
+library(vegan)
+library(patchwork)
+library(kableExtra)
+
+# Load cleaned and joined data here
+load(here::here("./data/clean_data/orig_counts.rda"))
+load(here::here("./data/clean_data/normalized_counts.rda"))
+
+# Mutate, stratify, rename, etc.. data here
+
+# Store any objects here
+
+
+```
+
+
+# DESeq2
+
+`do_deseq(dat, stop_col, formula, alpha = 0.05, test = "Wald", sf_type = "custom", total_counts = NULL, ordered = FALSE, reduced = NULL)`
+
+
+```{r}
+#| label: do-deseq
+
+# Raw output from DESeq2 package 
+#> dat: dataframe with counts and metadata for design formula
+  #> contains atleast IDs, grouping variable, and counts with all integer values
+  #> Need id variable in first column
+#> formula: design formula with condition of interest last
+#> stop_col: index for final column of metadata
+#> alpha: significance cutoff used for optimizing the independent filtering
+  #> default = 0.05 here, but default is 0.1 for the package function
+  #> set to adjusted p-value cutoff
+#> test: (two options) Wald for cross-sectional, LRT for longitudinal
+#> sf_type: how to handle size factors
+  #> sf_type = "median_ratio" uses default deseq2 esimation
+  #> sf_type = "custom" uses custom size factors in sf argument
+#> Optional arguments:
+  #> total_counts: optional vector of total counts for custom size factor estimation
+  #> reduced: for LRT, formula without the final interaction term
+  #> ordered: is one of the covariates ordered? if yes, set to TRUE
+
+do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
+                     sf_type, total_counts = NULL,
+                     ordered = FALSE, reduced = NULL){
+  
+  # Rename id column id if it isn't already
+  if(colnames(dat)[1] != "id") colnames(dat)[1] <- "id"
+  
+  # If any IDs are duplicated, ID with unique row numbers
+  if (any(duplicated(dat$id) == TRUE)){
+    # Replace old ID column with row numbers
+    dat <- dat %>% 
+      # remove original id
+      select(-id) %>% 
+      # create new id variable with unique identifiers
+      mutate(
+        id = row_number(),        # create ID
+        id = factor(id)           # make it a factor
+      ) %>% 
+      # make sure new id is the first column
+      relocate(id)
+  } # end id if
+  
+  if (test == "Wald"){
+    
+    # Transposed Count Data Frame 
+    count_data <- t(
+      dat[,-c(2:stop_col)] %>% 
+        column_to_rownames(var = colnames(dat[,1]))
+    ) 
+    
+    # Column data matrix
+    col_data <- dat[, 1:stop_col] %>% 
+      column_to_rownames(var = colnames(dat[,1]))
+    
+    # Make sure col_data and count_data match
+    if (unique(rownames(col_data) != colnames(count_data))) break
+    
+    if (ordered){ 
+      # Manually make the design matrix to include ordered factors
+      design_matrix <- model.matrix(formula, data = col_data)
+      
+      # Create DESeq Data Object
+      dds <- DESeqDataSetFromMatrix(
+        countData = count_data,
+        colData = col_data,
+        design = design_matrix # group
+      )
+    } else{
+      
+      # Create DESeq Data Object
+      dds <- DESeqDataSetFromMatrix(
+        countData = count_data,
+        colData = col_data,
+        design = formula # group
+      )
+    }
+    
+    if (sf_type == "median_ratio"){
+      
+      # Store Model object
+      deseq_mod <- DESeq(dds, test = test)
+      
+    } else{
+      
+      if(sf_type == "custom"){
+        
+        # Calculate the geometric mean of total counts
+        geo_mn <- exp(mean(log(total_counts))) 
+        # Custom size factors
+        custom_sf <- total_counts/geo_mn
+        # Manually set size factors
+        sizeFactors(dds) <- custom_sf 
+        
+        # Store Model object using 
+        deseq_mod <- DESeq(dds, 
+                           fitType = "parametric",
+                           test = test)
+      } else{ 
+        stop("invalid sf_type input") 
+      } # ifelse 2
+      
+    } # if 1
+    
+    # Store Results
+    mod_results <- results(deseq_mod, alpha = alpha)
+    
+  } else {
+    
+    if (test == "LRT"){
+      
+      # Transposed Count Data Frame 
+      count_data <- t(
+        dat[,-c(2:stop_col)] %>% 
+          column_to_rownames(var = colnames(dat[,1]))
+      ) 
+      
+      # Column data matrix
+      col_data <- dat[, c(1:stop_col)] %>% 
+        column_to_rownames(var = colnames(dat[,1]))
+      
+      # Make sure col_data and count_data match
+      if (unique(rownames(col_data) != colnames(count_data))) break
+      
+      # Create DESeq Data Object
+      dds <- DESeqDataSetFromMatrix(
+        countData = count_data,
+        colData = col_data,
+        # Full model
+        design = formula # ~ group + timepoint + group:timepoint
+      )
+      
+      # Store Model object with reduced model
+      deseq_mod <- DESeq(dds, test = test, reduced = reduced) # ~group + timepoint
+      
+      # Store Results
+      mod_results <- results(deseq_mod, alpha = alpha)
+      
+    } else{ stop("Invalid test input") } # end else 2
+    
+  } # end else 1
+  
+  return(mod_results)
+  
+} # End function
+
+
+```
+
+
+
+`display_deseq_results(mod, vars, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)`
+
+```{r}
+#| label: display-deseq-results
+
+# Display DESeq output in a cleaner, more easy to work with way
+  #> mod: model output from my do_deseq() function or package results(DESeq())
+  #> vars: the names of which variables to include in the output table
+  #> var_label: what to name the column containing vars as rows
+  #> digits: how many digits to round to
+  #> p.adjust.method: whether or not to correct for multiple comparisons
+  #> na.rm: if TRUE, NA rows are removed
+display_deseq_results <- function(mod, vars, digits = NULL, var_label = NULL,
+                                  p.adjust.method = NULL, na.rm = FALSE){
+  
+  # if no var_label provided, use a generic one
+  if(is.null(var_label)){ 
+    var_label <- "outcome"} else{
+      var_label <- var_label
+    }
+  
+  # Matrix to store Values
+  pvals <- matrix(
+    nrow = length(rownames(mod)),
+    ncol = 4,
+    dimnames = list(NULL, c(var_label, "log2foldchange", "lfcSE", "p_value")))
+  
+  for (i in 1:length(rownames(mod))){
+    
+    row_name <- rownames(mod)[i]
+    
+    if (any(row_name == vars)){
+      
+      if (is.null(digits)) { # don't round
+        pvals[i, 1] <- row_name
+        pvals[i, 2] <- as.numeric(mod$log2FoldChange[i])
+        pvals[i, 3] <- as.numeric(mod$lfcSE[i])
+        pvals[i, 4] <- as.numeric(mod$pvalue[i])
+        
+      } else{ # Round to digits
+        pvals[i, 1] <- row_name
+        pvals[i, 2] <- round(as.numeric(mod$log2FoldChange[i]), digits = digits)
+        pvals[i, 3] <- round(as.numeric(mod$lfcSE[i]), digits = digits)
+        pvals[i, 4] <- round(as.numeric(mod$pvalue[i]), digits = digits)
+      } # end ifelse 2
+      
+    } else { next }
+    
+  } # end loop
+  
+  if (na.rm){ # remove the NA levels
+    # Filter NA
+    pvals_tibble <- as_tibble(pvals) %>% 
+      filter(!is.na(p_value))       
+  } else{
+    # Make pvals into tibble without filtering
+    pvals_tibble <- as_tibble(pvals)
+  } # end ifelse
+  
+  # Get variables into the format we want them in
+  pvals_tibble <- pvals_tibble %>% 
+    mutate(
+      p_value = as.numeric(p_value),
+      lfcSE = as.numeric(lfcSE),
+      log2foldchange = as.numeric(log2foldchange),
+      foldchange = 2^log2foldchange
+    ) %>% 
+    relocate(foldchange, .after = log2foldchange) %>%
+    arrange(var_label)
+  
+  if (!is.null(digits)){
+    pvals_tibble <- pvals_tibble %>% 
+      mutate(foldchange = round(foldchange, digits))
+  }
+  
+  # Run an optional FDR
+  if (!is.null(p.adjust.method)) {
+    pvals_tibble <- pvals_tibble %>% 
+      mutate(p.adjust.method = p.adjust(p_value, method = p.adjust.method) 
+      )
+  } 
+  
+  return(pvals_tibble)
+  
+} # end function
+
+
+
+```
+
+
+
+`fit_deseq2(dat, stop_col, formulas, vars, alpha = 0.05, test = "Wald", sf_type = "custom", total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, var_label = NULL, digits = NULL)`
+
+
+```{r}
+#| label: fit-deseq2
+
+# fit_deseq2(): do_deseq and display_deseq_results wrapped together
+# outputs a list of tables for each variable level (gene) with results for each independent variable 
+# Use this function to output results for each variable in a design formula with multiple independent variables
+fit_deseq2 <- function(dat, stop_col, formulas, vars,
+                       sf_type = "custom", total_counts = NULL, 
+                       p.adjust.method = NULL, list = TRUE,
+                       alpha = 0.05, test = "Wald",
+                       ordered = FALSE, reduced = NULL, na.rm = FALSE,
+                       var_label = NULL, digits = NULL){
+  
+  formula_outs <- list()
+  # Calculate the raw package ouput 
+  for (i in 1:length(formulas)){
+    # Get the raw DESeq2 output
+    raw_out <- do_deseq(dat, stop_col = stop_col, sf_type = sf_type, 
+                        total_counts = total_counts, 
+                        formula = formulas[[i]][[1]], test = test) 
+    
+    # Organize raw output into a easier table
+    formula_outs[[i]] <- display_deseq_results(
+      raw_out, vars = vars, var_label, digits = digits, 
+      p.adjust.method = p.adjust.method, na.rm = na.rm
+    )
+    # Add the name of the variable to the list
+    covs <- str_split_1(
+      as.character(formulas[[i]]), pattern = "[\\s]*\\+[\\s]*"
+    )
+    names(formula_outs)[[i]] <- covs[[length(covs)]]
+  } # end for i
+  
+  # List to hold tables with all results for each level
+  list_results <- vector(length = length(vars), "list")
+  names(list_results) <- vars
+  
+  for (i in 1:length(vars)){
+    # matrix to store the data with variable names in the first column
+    store_dat <-  cbind(var = names(formula_outs), 
+                        matrix(nrow = length(formula_outs),
+                               ncol = ncol(formula_outs[[1]]),
+                               dimnames = list(NULL, names(formula_outs[[1]])))
+    ) # 5 cols
+    for(j in 1:length(formula_outs)){
+      # Fill matrix with data for a particular var level
+      store_dat[j,2] <- formula_outs[[j]][i,1][[1]] # [i,1]
+      store_dat[j,3] <- formula_outs[[j]][i,2][[1]] # [i,1]
+      store_dat[j,4] <- formula_outs[[j]][i,3][[1]] # [i,1]
+      store_dat[j,5] <- formula_outs[[j]][i,4][[1]] # [i,1]
+      store_dat[j,6] <- formula_outs[[j]][i,5][[1]] # [i,1]
+      
+      if (!is.null(p.adjust.method)){
+        store_dat[j,7] <- formula_outs[[j]][i,6][[1]]
+      }
+      
+    } # end for j
+    
+    # Fill slot for each level
+    list_results[[i]] <- as_tibble(store_dat)
+    
+  } # end for i
+  
+  # Return either a list or a full table
+  if (list){
+    return(list_results)
+  } else{
+    
+    # Put into a single table
+    tib <- list_results[[1]]
+    for (j in 2:length(list_results)){
+      tib <- rbind(tib, list_results[[j]])
+    } # end j
+    return(tib)
+  } # end else
+  
+  
+} # end function
+
+```
+
+
+
+<br>
+
+
+# Diversity
+
+
+$$L_{\alpha} = \left( \sum^n_{i \ = \ 1} P_i^{\ \ \alpha} \right) ^{\frac{1}{1 \ - \ \alpha}}$$
+
+
+`shannon(v)`
+
+`simpson(v)`
+
+```{r}
+#| label: shannon-simpson
+
+# Shannon: Calculate L1 Diversity for a vector of counts or normalized reads
+shannon <- function(v){
+  
+  prob <- c()
+  for (i in 1:length(v)){
+    
+    # Handle zeros
+    if (v[i] != 0){
+      # Genus proportion of set
+      prob[i] <- v[i]/sum(v)
+    } else{ next }
+    
+  } # end for
+  
+  # Remove NA
+  prob <- prob[!is.na(prob)]
+  
+  if (is.null(prob)) {
+    # Return 1 for shannon diversity if all values are 0 exp(0) = 1
+    div <- 1
+  } else {
+    
+    # calculate diversity
+    div <- exp(-sum(prob*log(prob)))
+    
+  } # end else
+  
+  return(div)
+  
+} # end function
+
+
+
+# Calculate L2 Diversity for a vector of counts or normalized reads
+# Returns a vector with [1] simpson's index, and [2] inverse simpson 
+simpson <- function(v){
+  
+  prob <- c()
+  for (i in 1:length(v)){
+    
+    # Deal with 0 sum
+    if (sum(v) == 0){
+      prob[i] <- 0
+    } else{
+      
+      # Genus proportion of set
+      prob[i] <- v[i]/sum(v)
+      
+    } # end else
+    
+  } # end for loop
+  
+  # Simpson's index 
+  si <- 1 - sum(prob^2)
+  # Calculate inverse Simpson's index
+  inv_si <- (sum(prob^2))^(-1)
+  
+  return(c(si, inv_si))
+  
+}
+
+```
+
+
+
+`calc_diversity(dat, start_col)`
+
+
+```{r}
+#| label: calc-diversity
+
+# Calculate all diversity indices simultaneously
+  #> Output table with treatment arm, shannon, simpson's index, and inverse simpson
+  #> dat: Count data with treatment arm in column immediately before counts start
+  #> start_col: Index of first count column 
+
+calc_diversity <- function(dat, start_col){
+  
+  # Store just diversity variables as data
+  data <- as.data.frame(dat[, start_col:ncol(dat)])
+  
+  # Store ID variables
+  arm <- as.data.frame(dat[, start_col-1])
+  
+  # Create empty matrix to store values
+  div_out <- matrix(nrow = nrow(arm), ncol = 3,
+                    dimnames = list(NULL, c("shannon", "simpson", "inv_simpson"))
+  )
+  for (i in 1:nrow(arm)){
+    
+    # Pool data
+    vi <- as.numeric(data[i,])
+    # Calculate Shannon Diversity for row i
+    l1 <- shannon(vi)
+    l2 <- simpson(vi)
+    
+    # Store diversity
+    div_out[i,1] <- l1    # Shannon
+    div_out[i,2] <- l2[1] # SI
+    div_out[i,3] <- l2[2] # inverse SI
+    
+  } # end for
+  
+  # Fill row i in 1st column with treatment arm
+  div_out <- as_tibble(cbind(arm, as.data.frame(div_out)))
+  
+  return(div_out)
+  
+} # end function
+```
+
+
+`plot_diversity(dat, xlim, timepoint, groups, colors)`
+
+```{r}
+#| label: plot-diversity
+
+# Plot diversity values from calc_diversity() output, requires `patchwork` loaded
+  #> dat: Output table from calc_diversity()
+  #> xlim: Manually set limits of x-axis (if you don't do this, values get truncated)
+  #> timepoint: Character string for plot title (e.g. "baseline", "36 months"..)
+  #> groups: Character vector for naming groups in the legend
+  #> colors: Vector of colors matching groups
+
+plot_diversity <- function(dat, xlim, timepoint, groups, colors){
+  
+  # Rename group column tx if it isn't already
+  if(colnames(dat)[1] != "tx") colnames(dat)[1] <- "tx"
+  
+  p_shannon <- ggplot(data = dat) +
+    geom_density(
+      aes(shannon, fill = tx), 
+      alpha = 0.5,
+      color = FALSE
+    ) + 
+    scale_fill_manual(
+      labels = groups,
+      values = colors
+    ) +
+    scale_x_continuous(limits = xlim) +
+    labs(
+      title = str_c("Diversity", timepoint, sep = " "),
+      x = "Shannon's Diversity (effective number)",
+      y = "Density"
+    ) +
+    theme_light() +
+    theme(
+      legend.title = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank()
+      # aspect.ratio = 1
+    )
+  
+  p_inv_si <- ggplot(data = dat) +
+    geom_density(
+      aes(inv_simpson, fill = tx), 
+      alpha = 0.5,
+      color = FALSE
+    ) + 
+    scale_fill_manual(
+      labels = groups, 
+      values = colors
+    ) +
+    scale_x_continuous(limits = xlim) +
+    labs(
+      x = "Inverse Simpson's Diversity (effective number)",
+      y = "Density"
+    ) +
+    theme_light() +
+    theme(
+      legend.title = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank()
+      # aspect.ratio = 1
+    )
+  
+  p_combined <- p_shannon + p_inv_si + plot_layout(guides = "collect")
+  
+  return(p_combined)
+  
+} # end function
+
+```
+
+
+<br>
+
+# PERMANOVA
+
+`fit_permanova(dat, start_col, mthd, perm = 9999)`
+
+```{r}
+#| label: fit-permanova
+
+# Combines runs PERMANOVA, comparing groups at a single timepoint
+  #> dat: count data with time variable and group column preceding count columns
+  #> start_col: first column with counts
+  #> mthd: distance measure for `vegan::adonis2()`
+  #> perm: number of permutations
+
+fit_permanova <- function(dat, start_col, mthd, perm = 9999){
+  
+  # Filter data
+  arm_dat <- dat[,c(1:start_col-1)]
+  # Diversity data as matrix
+  count_dat <- as.matrix(dat[,-c(1:start_col-1)])
+  
+  # Treatment arm
+  arm <- as.matrix(arm_dat[,start_col-1])
+  
+  # PERMANOVA model
+  permanova_out <- vegan::adonis2(
+    count_dat ~ arm,
+    #data = arm_dat,
+    method = mthd,
+    permutations = perm
+  )
+  return(permanova_out)
+  
+} # end function
+
+```
+
+<br>
+
+# PCoA
+
+`pcoa(dat, start_col, method)`
+
+```{r}
+#| label: pcoa
+
+# Function returning Eigenvectors, Eigenvalues, and Centroids from PCoA
+  #> dat: count data with time variable and group column preceding count columns
+  #> start_col: first column with counts
+  #> method: distance measure for vegan distance matrix (takes "l1" or "l2")
+
+pcoa <- function(dat, start_col, method){
+  
+  # Sort by group
+  dat <- arrange(dat, dat[,start_col-1][[1]])
+  
+  # Store just diversity variables as data
+  data <- dat[, start_col:ncol(dat)]
+  
+  # Store ID variables
+  arm <- dat[, 1:start_col-1]
+  
+  # Compute distance matrix using selected norm as method and store as dis
+  if (method == "l1"){
+    dist_m <- vegdist(data, method = "manhattan")
+  } else if (method == "l2"){
+    dist_m <- vegdist(data, method = "euclidean")
+  } else {
+    stop("Invalid method input: choose 'l1' or 'l2'")
+  }
+  
+  # PCoA with distance matrix
+  pcoa_mod <- betadisper(d = dist_m, group = arm[,start_col-1][[1]])
+  
+  # Site points in multivariate space
+  vectors <- data.frame(
+    group = pcoa_mod$group,
+    data.frame(pcoa_mod$vectors)
+  )
+  
+  # Name each PC
+  names(vectors) <- "group"
+  for (i in 2:ncol(vectors)){
+    names(vectors)[i] <- str_c("v_PCoA", as.numeric(i-1))
+  }
+  
+  # Centroids in multivariate space  
+  centroids <- data.frame(
+    group = rownames(pcoa_mod$centroids),
+    data.frame(pcoa_mod$centroids)
+  )
+  
+  # Eigenvalues
+  eigs <- as.data.frame(as.numeric(pcoa_mod$eig))
+  names(eigs) <- "value"
+  
+  out <- list(centroids, vectors, eigs)
+  names(out) <- c("centroids", "vectors", "eig")
+  
+  # Return output eigenvalues and pc1/pc2 eigenvectors 
+  return(out)
+  
+} # end function
+
+```
+
+
+`plot_pcoa(vectors, centroids, label, colors = NULL, title_text = NULL, subtitle_text = NULL)`
+
+```{r}
+#| label: plot-pcoa
+
+# Plot Centroids from PCoA1 and PCoA2
+  #> vectors: Eigenvectors from pcoa() output
+  #> centroids: Centroids from pcoa() output
+  #> label: labels for groups in the legend
+  #> colors: option to manually set group colors
+  #> title_text: optional plot title
+  #> subtitle_text: optional plot subtitle
+
+plot_pcoa <- function(vectors, centroids, label, colors = NULL,
+                      title_text = NULL, 
+                      subtitle_text = NULL){ 
+  
+  # Eigenvectors and Centroids for PC1 and PC2 
+  v1_2 <- as_tibble(vectors[,1:3])
+  c1_2 <- as_tibble(centroids[,1:3]) %>% 
+    select(group, c_PCoA1 = PCoA1, c_PCoA2 = PCoA2)
+  
+  # Values to plot lines from segments to points in tibble format
+  for_seg <- v1_2 %>% 
+    group_by(group) %>% 
+    left_join(c1_2, by = "group") %>% 
+    # add in a variable labeling row numbers by group
+    mutate(point = row_number())
+  
+  # PCoA 1 and 2
+  plot_1_2 <- 
+    ggplot() + 
+    stat_ellipse(
+      data = for_seg,
+      aes(x = v_PCoA1, y = v_PCoA2, fill = group),
+      geom = "polygon",
+      alpha = 0.175
+    ) +
+    geom_segment(
+      data = for_seg,
+      aes(x = v_PCoA1, xend = c_PCoA1,
+          y = v_PCoA2, yend = c_PCoA2,
+          color = group),
+      alpha = 0.30
+    ) +
+    # centroids
+    geom_point(
+      data = for_seg, # group and first two PC
+      aes(x = c_PCoA1, y = c_PCoA2, color = group),
+      size = 5,
+      # shape = 18
+    ) +
+    # points
+    geom_point(
+      data = for_seg,
+      aes(x = v_PCoA1, y = v_PCoA2, color = group), 
+      size = 2
+    ) +
+    labs(
+      title = title_text,
+      subtitle = subtitle_text,
+      x = "PCoA1",
+      y = "PCoA2"
+    ) +
+    theme_light() +
+    theme(
+      legend.title = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      aspect.ratio = 1)
+  
+  if (is.null(colors)){
+    
+    return(plot_1_2)
+    
+  } else {
+    
+    plot_1_2 <- plot_1_2 +     
+      scale_color_manual(
+        labels = label,
+        values = colors
+      ) +
+      scale_fill_manual(
+        labels = label,
+        values = colors
+      )
+    return(plot_1_2)
+    
+  } # end else
+  
+} # end function
+
+```
+
+<br>
+
+
+
+# Correlation
+
+
+`corr_fdr(dat, method = "spearman", p.adjust.method = "fdr", nonzero_thres = round(0.1*nrow(dat)), var_lab = NULL, digits = NULL)`
+
+```{r}
+#| label: corr-test-padj
+
+corr_fdr <- function(dat, method = "spearman", p.adjust.method = "fdr",
+                     nonzero_thres = round(0.1*nrow(dat)),
+                     var_lab = NULL, digits = NULL){
+  
+  # if no var_lab provided, use a generic one
+  if(is.null(var_lab)) var_lab <- "var"
+  
+  # First: Filter out columns with too many zeros
+  # Vector to store names of columns to remove
+  remove_cols <- c()
+  # Convenience vector to track the non-zero values in each column
+  for (i in 1:ncol(dat)){
+    # Create a counter for non-zero values in a column
+    non_zero <- 0
+    for (j in 1:nrow(dat[,i])){
+      if (dat[j,i] > 0){
+        non_zero <- non_zero+1
+      } else{next}
+    } # end for j
+    # Store column names with fewer than threshold for non-zero values
+    if (non_zero <= nonzero_thres){
+      remove_cols[i] <- colnames(dat)[i]
+    } else{next}
+  } # end for i
+  # Take out NA values
+  remove_cols <- remove_cols[!is.na(remove_cols)]
+  # Remove all zero columns
+  dat_clean <- dat %>%
+    select(-all_of(remove_cols))
+  
+  # Second: get spearman correlation coefficients
+  corr_coef <- as.data.frame(cor(dat_clean, method = method))
+  # Get just the top triangle
+  corr_coef_top <- matrix(ncol = ncol(corr_coef), nrow = nrow(corr_coef))
+  for (i in 1:ncol(corr_coef)){
+    # vector to store values before 1
+    vals <- c()
+    # counter
+    j <- 0
+    while (j+1 != i){ # stop loop at diagonal
+      vals[j+1] <- corr_coef[j+1,i]
+      j <- j + 1
+    } # end while
+    # Append on NA to create a vector the same length as nrow(corr_coef)
+    corr_coef_top[,i] <- append(vals, rep(NA, length(corr_coef[,i]) - j))
+  } # end for i
+  # Rename rows and columns
+  colnames(corr_coef_top) <- rownames(corr_coef_top) <- colnames(corr_coef)
+  
+  # Validate dimensions of correlation matrix
+  if (any(dim(corr_coef) != c(ncol(dat_clean), ncol(dat_clean))) | 
+      any(dim(corr_coef_top) != c(ncol(dat_clean), ncol(dat_clean)))){
+    break
+  } # end if
+  
+  # Third: correlation p value with cor.test()
+  corr_pval <- matrix(nrow = ncol(dat_clean), ncol = ncol(dat_clean))
+  for (i in 1:ncol(dat_clean)){
+    for (j in 1:ncol(dat_clean)){
+      
+      corr_pval[i,j] <- cor.test(dat_clean[[i]], dat_clean[[j]],
+                                 method = method, exact = FALSE)$p.value
+    } # end j
+  } # end i
+  # Get just the top triangle
+  corr_p_top <- matrix(ncol = ncol(corr_pval), 
+                       nrow = nrow(corr_pval))
+  for (i in 1:ncol(corr_pval)){
+    # vector to store values before 1
+    vals <- c()
+    # counter
+    j <- 0
+    while (j+1 != i){ # stop loop at diagonal
+      vals[j+1] <- corr_pval[j+1,i]
+      j <- j + 1
+    } # end while
+    # append on NA
+    corr_p_top[,i] <- append(vals, rep(NA, length(corr_pval[,i]) - j))
+  } # end for i
+  # Rename rows and columns
+  colnames(corr_p_top) <- rownames(corr_p_top) <- colnames(corr_coef)
+  # Validate dimensions of p matrix
+  if (any(dim(corr_pval) != c(ncol(dat_clean), ncol(dat_clean))) | 
+      any(dim(corr_p_top) != c(ncol(dat_clean), ncol(dat_clean)))){
+    break
+  } # end if
+  
+  # Fourth: FDR
+  # Convert matrix values to vector
+  vector_vals <- as.vector(corr_p_top)
+  # NA positions
+  na_positions <- is.na(vector_vals)
+  # Remove NA values
+  vector_p_no_na <- vector_vals[!na_positions]
+  
+  if (p.adjust.method == "fdr"){
+    # FDR BH
+    vector_padj <- p.adjust(vector_p_no_na, method = "fdr")
+  } else{
+    if(p.adjust.method == "bonferroni"){
+      # Bonferroni correction
+      vector_padj <- p.adjust(vector_p_no_na, method = "bonferroni")
+    } else{
+      if (p.adjust.method == "holm"){
+        vector_padj <- p.adjust(vector_p_no_na, method = "holm")
+      } else{
+        stop("invalid input for p.adjust.method") 
+      } # ifelse 3
+    } # ifelse 2
+  } # ifelse 1
+  
+  # Re-insert NA at original positions
+  vector_vals[!na_positions] <- vector_padj
+  # Coerce vector back into matrix
+  corr_padjust_top <- matrix(vector_vals, nrow = nrow(corr_coef))
+  # Add back in arg_group names
+  colnames(corr_padjust_top) <- rownames(corr_padjust_top) <- colnames(corr_coef)
+  
+  # Validate dimensions of padj matrix
+  if (any(dim(corr_padjust_top) != c(ncol(dat_clean), ncol(dat_clean)))) break
+  
+  # Fifth: Extract name pairs of arg_groups with padj values less than 0.05
+  # Matrix to store 5 variables (gene names, cor coef, raw p-value, and q-value)
+  pairs <- matrix(nrow = 1, ncol = 5, 
+                  dimnames = list(
+                    NULL, 
+                    c(str_c(var_lab, "1"), str_c(var_lab, "2"), 
+                      "cor", "pval", "padj")))
+  
+    # Skip NA
+    for (i in 1:ncol(corr_padjust_top)){
+      for(j in 1:nrow(corr_padjust_top)){
+        # If it isnt NA
+        if(!is.na(corr_padjust_top[j,i])){
+          pairs <- rbind(
+            pairs, c(rownames(corr_padjust_top)[i], 
+                     colnames(corr_padjust_top)[j], 
+                     # Add in the coefficient from the other matrix 
+                     corr_coef[j,i],  # corr coef
+                     # Raw p-value
+                     corr_p_top[j,i],      # raw p
+                     # padj for selected method
+                     corr_padjust_top[j,i] # padj col
+            )
+          )
+          # Convert to tibble and make variables numeric
+          pairs <- as_tibble(pairs) %>% 
+            mutate(
+              cor = as.numeric(cor),
+              pval = as.numeric(pval), 
+              padj = as.numeric(padj)
+            )
+        } else{ next } # end ifelse
+      } # end j
+    } # end i
+  
+  # Remove first NA row 
+  pairs <- pairs[-1,]
+  
+  if(!is.null(digits)){
+    pairs <- as_tibble(pairs) %>% 
+      mutate(
+        cor = signif(as.numeric(cor), digits),
+        pval = signif(as.numeric(pval), digits),
+        padj = signif(as.numeric(padj), digits)
+      )
+  }
+  
+  # Return a list with the correlation, pvalue, fdr matrices, and a summary table
+  return(list("correlation_coefficients" = corr_coef_top, 
+              "pvalue_matrix" = corr_p_top,
+              "qvalue_matrix" = corr_padjust_top, 
+              "pairwise_comparison" = pairs,
+              "removed_cols" = remove_cols)
+  )
+  
+  
+} # end function
+```
+
+
+
+
+
+
+
+<br>
+
+# Longitudinal Results
+
+`combine_table(list_results, var_col, var_name, bind = FALSE)`
+
+```{r}
+#| label: longitudinal-combine-table
+
+# Combines p-value outputs for different timepoints in a single table
+  #> list_results: fit_permanova() output for each timepoint collected in a list
+  #> var_col: the column of the result variable to be represented (e.g. column with `padj`, etc)
+  #> var_name: name of the variable in var_col
+  #> time_name: manually set the name of timepoints
+  #> bind: if no key variable for joining exists, use bind = TRUE to bind columns instead of joining
+
+combine_table <- function(list_results, var_col, var_name,
+                          time_name = NULL, bind = FALSE){
+  
+  # if time names are not specified use indices 0-n
+  if (is.null(time_name)){
+    
+    # Loop to rename and store just variable of interest
+    new_list <- list()
+    for (i in 1:length(list_results)){
+      
+      # tibble with column 1 and result variable
+      tib_i <- list_results[[i]][, c(1, var_col)]
+      # Change the name of the variable to reflect timepoint
+      colnames(tib_i)[2] <- str_c(var_name, as.character(i-1), sep = "_")
+      # Store in the new list
+      new_list[[i]] <- tib_i
+      
+    } # end for
+    
+  } else {
+    
+    # Loop to rename and store just variable of interest
+    new_list <- list()
+    for (i in 1:length(list_results)){
+      
+      # tibble with column 1 and result variable
+      tib_i <- list_results[[i]][, c(1, var_col)]
+      # Time name
+      timep <- time_name[i]
+      # Change the name of the variable to reflect timepoint
+      colnames(tib_i)[2] <- str_c(var_name, timep, sep = "_")
+      # Store in the new list
+      new_list[[i]] <- tib_i
+      
+    } # end for
+    
+  } # end else
+  
+  if (bind == FALSE){ # Left Joining when a key variable exists
+    
+    # Starting place for creating the full table
+    tib_full <- new_list[[1]]
+    # Store the name of the key variable to join tibbles with
+    join_var <- colnames(tib_full)[1]
+    
+    for(j in 2:length(new_list)){
+      
+      tib_j <- new_list[[j]]
+      
+      # Join columns
+      tib_full <- tib_full %>% 
+        left_join(tib_j, by = join_var)
+      
+    } # end for
+    
+  } else{ # If there is no key variable to join, then bind 
+    
+    # Starting place for creating the full table
+    tib_full <- new_list[[1]]
+    
+    for(j in 2:length(new_list)){
+      
+      tib_j <- new_list[[j]][,2]
+      
+      # Bind columns
+      tib_full <- as_tibble(tib_full %>% cbind(tib_j))
+    } # end for
+    
+  } # end else
+  
+  return(tib_full)
+  
+} # end function
+
+```
+
+
+
