@@ -44,12 +44,29 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
   # Rename id column id if it isn't already
   if(colnames(dat)[1] != "id") colnames(dat)[1] <- "id"
   
+  # If any IDs are duplicated, ID with unique row numbers
+  if (any(duplicated(dat$id) == TRUE)){
+    # Replace old ID column with row numbers
+    dat <- dat %>% 
+      # remove original id
+      select(-id) %>% 
+      # create new id variable with unique identifiers
+      mutate(
+        id = row_number(),        # create ID
+        id = factor(id)           # make it a factor
+      ) %>% 
+      # make sure new id is the first column
+      relocate(id)
+  } # end id if
+  
   if (test == "Wald"){
+    
     # Transposed Count Data Frame 
     count_data <- t(
       dat[,-c(2:stop_col)] %>% 
         column_to_rownames(var = colnames(dat[,1]))
     ) 
+    
     # Column data matrix
     col_data <- dat[, 1:stop_col] %>% 
       column_to_rownames(var = colnames(dat[,1]))
@@ -60,6 +77,7 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
     if (ordered){ 
       # Manually make the design matrix to include ordered factors
       design_matrix <- model.matrix(formula, data = col_data)
+      
       # Create DESeq Data Object
       dds <- DESeqDataSetFromMatrix(
         countData = count_data,
@@ -67,6 +85,7 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
         design = design_matrix # group
       )
     } else{
+      
       # Create DESeq Data Object
       dds <- DESeqDataSetFromMatrix(
         countData = count_data,
@@ -74,17 +93,23 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
         design = formula # group
       )
     }
+    
     if (sf_type == "median_ratio"){
+      
       # Store Model object
       deseq_mod <- DESeq(dds, test = test)
+      
     } else{
+      
       if(sf_type == "custom"){
+        
         # Calculate the geometric mean of total counts
         geo_mn <- exp(mean(log(total_counts))) 
         # Custom size factors
         custom_sf <- total_counts/geo_mn
         # Manually set size factors
         sizeFactors(dds) <- custom_sf 
+        
         # Store Model object using 
         deseq_mod <- DESeq(dds, 
                            fitType = "parametric",
@@ -92,30 +117,22 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
       } else{ 
         stop("invalid sf_type input") 
       } # ifelse 2
+      
     } # if 1
+    
     # Store Results
     mod_results <- results(deseq_mod, alpha = alpha)
+    
   } else {
+    
     if (test == "LRT"){
-      # If any IDs are duplicated, ID with unique row numbers
-      if (any(duplicated(dat$id) == TRUE)){
-        # Replace old ID column with row numbers
-        dat <- dat %>% 
-          # remove original id
-          select(-id) %>% 
-          # create new id variable with unique identifiers
-          mutate(
-            id = row_number(),        # create ID
-            id = factor(id)           # make it a factor
-          ) %>% 
-          # make sure new id is the first column
-          relocate(id)
-      } # end id if
+      
       # Transposed Count Data Frame 
       count_data <- t(
         dat[,-c(2:stop_col)] %>% 
           column_to_rownames(var = colnames(dat[,1]))
       ) 
+      
       # Column data matrix
       col_data <- dat[, c(1:stop_col)] %>% 
         column_to_rownames(var = colnames(dat[,1]))
@@ -133,6 +150,7 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
       
       # Store Model object with reduced model
       deseq_mod <- DESeq(dds, test = test, reduced = reduced) # ~group + timepoint
+      
       # Store Results
       mod_results <- results(deseq_mod, alpha = alpha)
       
@@ -154,8 +172,14 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
   #> p.adjust.method: whether or not to correct for multiple comparisons
     #> string for which p.adjust method to use
   #> na.rm: if TRUE, NA rows are removed
-display_deseq_results <- function(mod, vars, var_label, digits = NULL, 
+display_deseq_results <- function(mod, vars, digits = NULL, var_label = NULL,
                                   p.adjust.method = NULL, na.rm = FALSE){
+  
+  # if no var_label provided, use a generic one
+  if(is.null(var_label)){ 
+    var_label <- "outcome"} else{
+      var_label <- var_label
+    }
   
   # Matrix to store Values
   pvals <- matrix(
@@ -171,15 +195,15 @@ display_deseq_results <- function(mod, vars, var_label, digits = NULL,
       
       if (is.null(digits)) { # don't round
         pvals[i, 1] <- row_name
-        pvals[i, 2] <- mod$log2FoldChange[i]
-        pvals[i, 3] <- mod$lfcSE[i]
-        pvals[i, 4] <- mod$pvalue[i]
+        pvals[i, 2] <- as.numeric(mod$log2FoldChange[i])
+        pvals[i, 3] <- as.numeric(mod$lfcSE[i])
+        pvals[i, 4] <- as.numeric(mod$pvalue[i])
         
       } else{ # Round to digits
         pvals[i, 1] <- row_name
-        pvals[i, 2] <- round(mod$log2FoldChange[i], digits = digits)
-        pvals[i, 3] <- round(mod$lfcSE[i], digits = digits)
-        pvals[i, 4] <- round(mod$pvalue[i], digits = digits)
+        pvals[i, 2] <- round(as.numeric(mod$log2FoldChange[i]), digits = digits)
+        pvals[i, 3] <- round(as.numeric(mod$lfcSE[i]), digits = digits)
+        pvals[i, 4] <- round(as.numeric(mod$pvalue[i]), digits = digits)
       } # end ifelse 2
       
     } else { next }
@@ -226,11 +250,12 @@ display_deseq_results <- function(mod, vars, var_label, digits = NULL,
 # fit_deseq2(): do_deseq and display_deseq_results wrapped together
 # outputs a list of tables for each variable level (gene) with results for each independent variable 
 # Use this function to output results for each variable in a design formula with multiple independent variables
-fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
-                       sf_type, total_counts = NULL,
+fit_deseq2 <- function(dat, stop_col, formulas, vars,
+                       sf_type = "custom", total_counts = NULL, 
+                       p.adjust.method = NULL, list = TRUE,
+                       alpha = 0.05, test = "Wald",
                        ordered = FALSE, reduced = NULL, na.rm = FALSE,
-                       p.adjust.method = NULL,
-                       vars, var_label, digits = 4){
+                       var_label = NULL, digits = NULL){
   
   formula_outs <- list()
   # Calculate the raw package ouput 
@@ -242,7 +267,7 @@ fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
     
     # Organize raw output into a easier table
     formula_outs[[i]] <- display_deseq_results(
-      raw_out, vars = vars, var_label, digits, 
+      raw_out, vars = vars, var_label, digits = digits, 
       p.adjust.method = p.adjust.method, na.rm = na.rm
     )
     # Add the name of the variable to the list
@@ -282,9 +307,23 @@ fit_deseq2 <- function(dat, stop_col, formulas, alpha = 0.05, test = "Wald",
     
   } # end for i
   
-  return(list_results)
+  # Return either a list or a full table
+  if (list){
+    return(list_results)
+  } else{
+    
+    # Put into a single table
+    tib <- list_results[[1]]
+    for (j in 2:length(list_results)){
+      tib <- rbind(tib, list_results[[j]])
+    } # end j
+    return(tib)
+  } # end else
+  
   
 } # end function
+
+
 
 
 
@@ -315,6 +354,7 @@ result_wald_fdr <- display_deseq_results(
 
 result_wald_fdr
 
+
 ### tx and time -------------------
 
 
@@ -330,6 +370,9 @@ result_group_time <- fit_deseq2(dat = counts, stop_col = 3, formulas = formulas,
                                 var_label = "x", digits = 4
            )
 result_group_time
+
+
+
 
 ## Longitudinal LRT --------------------------------
 
