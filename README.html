@@ -366,7 +366,7 @@ documentation.</p>
 <h3>Description</h3>
 <p>Using <code>DESeq2</code> for differential expression analysis.</p>
 <p><strong>Usage</strong></p>
-<p><code>do_deseq(dat, stop_col, formula, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL)</code>:</p>
+<p><code>do_deseq(dat, stop_col, formula, alpha = 0.05, test = &quot;Wald&quot;, sf_type = &quot;custom&quot;, total_counts = NULL, ordered = FALSE, reduced = NULL)</code>:</p>
 <p><strong>Arguments</strong></p>
 <p>dat</p>
 <ul>
@@ -394,7 +394,7 @@ adjusted p-value cutoff</li>
 <li>Indicates which method to use for estimating size factors. May be
 set to “median_ratio” for use of the DESeq2 package default method, or
 “custom” which estimates size factors with a vector of the total
-non-human reads in each sample</li>
+non-human reads in each sample (default = “custom”)</li>
 </ul>
 <p>total_counts</p>
 <ul>
@@ -418,7 +418,7 @@ variable</li>
 table with the log2foldchange, foldchange, standard error, and p-value
 for each level of the dependent variable.</p>
 <p><strong>Usage</strong></p>
-<p><code>display_deseq_results(mod, vars, var_label, digits = 4, p.adjust.method = NULL, na.rm = FALSE)</code></p>
+<p><code>display_deseq_results(mod, vars, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)</code></p>
 <p><strong>Arguments</strong></p>
 <p>mod</p>
 <ul>
@@ -431,11 +431,13 @@ for each level of the dependent variable.</p>
 </ul>
 <p>var_label</p>
 <ul>
-<li>What to name the column containing vars as rows</li>
+<li>Optional string. What to name the column containing vars as rows
+(defaults to “outcome”)</li>
 </ul>
 <p>digits</p>
 <ul>
-<li>how many digits to round output values to. default = 4</li>
+<li>optional argument how many digits to round output values to. default
+= 4</li>
 </ul>
 <p>p.adjust.method</p>
 <ul>
@@ -457,7 +459,7 @@ for each variable level (class, gene, etc..) with results for each
 variable. Used to output DESeq2 results for each variable in a design
 formula with multiple independent variables.</p>
 <p><strong>Usage</strong></p>
-<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, vars, var_label, digits = 4)</code></p>
+<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type = &quot;custom&quot;, vars, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, var_label = NULL, digits = NULL)</code></p>
 <p><strong>Arguments</strong></p>
 <p>Same arguments from <code>do_deseq()</code> and
 <code>display_deseq_results()</code>.</p>
@@ -635,9 +637,52 @@ columns</li>
 <p><br></p>
 </div>
 </div>
+<div id="correlation" class="section level1">
+<h1>Correlation</h1>
+<div id="description-9" class="section level3">
+<h3>Description</h3>
+<p>Test for correlation/association between paired samples and correct
+for multiple comparisons. Returns correlation coeffiecents, p-values,
+padjust values, a summary table with all values, and a vector of columns
+(if any) that were filtered out due to sparseness.</p>
+<p><strong>Usage</strong></p>
+<p><code>corr_fdr(dat, method = &quot;spearman&quot;, p.adjust.method = &quot;fdr&quot;, nonzero_thres = round(0.1*nrow(dat)), var_lab = NULL, digits = NULL)</code></p>
+<p><strong>Arguments</strong></p>
+<p>dat</p>
+<ul>
+<li>Dataframe with only count or normalized read data</li>
+</ul>
+<p>method</p>
+<ul>
+<li>Which correlation coefficient to use (default = spearman)</li>
+</ul>
+<p>p.adjust.method</p>
+<ul>
+<li>Method for p.adjust correction for multiple comparisons (default =
+“fdr”)</li>
+</ul>
+<p>nonzero_thres</p>
+<ul>
+<li>Threshold of non-zero values to use for filtering out columns with
+mostly zero counts. Default removes columns with fewer than 10% non-zero
+values</li>
+</ul>
+<p>var_lab</p>
+<ul>
+<li>Optional, what column names should be in result table (e.g
+“gene”,“class”, etc). Defaults to “var”</li>
+</ul>
+<p>digits</p>
+<ul>
+<li>Optional argument, how many digits to round final outputs to if
+desired</li>
+</ul>
+<p><br></p>
+</div>
+</div>
 <div id="longitudinal-results" class="section level1">
 <h1>Longitudinal Results</h1>
-<div id="description-9" class="section level3">
+<div id="description-10" class="section level3">
 <h3>Description</h3>
 <p>Combine p-value outputs for different timepoints in a single
 table.</p>
@@ -671,7 +716,7 @@ columns instead of joining</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-10" class="section level3">
+<div id="description-11" class="section level3">
 <h3>Description</h3>
 <p>Plot a 3D scatterplot for visualizing time centroids on 3 principal
 components.</p>

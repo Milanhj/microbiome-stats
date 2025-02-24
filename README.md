@@ -14,7 +14,7 @@ Using `DESeq2` for differential expression analysis.
 
 **Usage**
 
-`do_deseq(dat, stop_col, formula, alpha = 0.05, test = "Wald", sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL)`:
+`do_deseq(dat, stop_col, formula, alpha = 0.05, test = "Wald", sf_type = "custom", total_counts = NULL, ordered = FALSE, reduced = NULL)`:
 
 **Arguments**
 
@@ -39,6 +39,7 @@ sf_type
 
 - Indicates which method to use for estimating size factors. May be set to "median_ratio" for use of the DESeq2
 package default method, or "custom" which estimates size factors with a vector of the total non-human reads in each sample
+(default = "custom")
 
 total_counts
 
@@ -66,7 +67,7 @@ for each level of the dependent variable.
 
 **Usage**
 
-`display_deseq_results(mod, vars, var_label, digits = 4, p.adjust.method = NULL, na.rm = FALSE)`
+`display_deseq_results(mod, vars, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)`
 
 **Arguments**
 
@@ -80,11 +81,11 @@ vars
 
 var_label
 
--   What to name the column containing vars as rows
+-   Optional string. What to name the column containing vars as rows (defaults to "outcome")
 
 digits
 
-- how many digits to round output values to. default = 4
+- optional argument how many digits to round output values to. default = 4
 
 p.adjust.method
 
@@ -106,7 +107,7 @@ Used to output DESeq2 results for each variable in a design formula with multipl
 
 **Usage**
 
-`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, vars, var_label, digits = 4)`
+`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type = "custom", vars, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, var_label = NULL, digits = NULL)`
 
 **Arguments**
 
@@ -265,6 +266,7 @@ method
 
 <br>
 
+
 ### Description
 
 Plot Centroids from PCoA1 and PCoA2.
@@ -300,6 +302,56 @@ subtitle_text
 -   Optional plot subtitle
 
 <br>
+
+
+# Correlation
+
+
+### Description
+
+Test for correlation/association between paired samples and correct for multiple comparisons.
+Returns correlation coeffiecents, p-values, padjust values, a summary table with all values, 
+and a vector of columns (if any) that were filtered out due to sparseness.
+
+
+**Usage**
+
+`corr_fdr(dat, method = "spearman", p.adjust.method = "fdr", nonzero_thres = round(0.1*nrow(dat)), var_lab = NULL, digits = NULL)`
+
+
+**Arguments**
+
+dat
+
+- Dataframe with only count or normalized read data
+
+method
+
+- Which correlation coefficient to use (default = spearman)
+
+p.adjust.method
+
+- Method for p.adjust correction for multiple comparisons (default = "fdr")
+
+nonzero_thres
+
+- Threshold of non-zero values to use for filtering out columns with mostly zero counts.
+Default removes columns with fewer than 10% non-zero values
+
+var_lab
+
+- Optional, what column names should be in result table (e.g "gene","class", etc). Defaults to "var"
+
+digits
+
+- Optional argument, how many digits to round final outputs to if desired
+
+
+<br>
+
+
+
+
 
 # Longitudinal Results
 
