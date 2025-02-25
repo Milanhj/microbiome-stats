@@ -325,10 +325,11 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
                         formula = formulas[[i]][[1]], test = test) 
     
     # Organize raw output into a easier table
-    formula_outs[[i]] <- display_deseq_results(
+    out <- display_deseq_results(
       raw_out, vars = vars, var_label, digits = digits, 
       p.adjust.method = p.adjust.method, na.rm = na.rm
     )
+    formula_outs[[i]] <- out
     
     # Add the name of the variable to the list
     covs <- str_split_1(
@@ -338,10 +339,10 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
   } # end for i
   
   # List to hold tables with all results for each level
-  list_results <- vector(length = length(vars), "list")
-  names(list_results) <- vars
+  list_results <- vector(length = nrow(out), "list")
+  names(list_results) <- out[,1][[1]]
   
-  for (i in 1:length(vars)){
+  for (i in 1:nrow(out)){
     # matrix to store the data with variable names in the first column
     store_dat <-  cbind(var = names(formula_outs), 
                         matrix(nrow = length(formula_outs),
@@ -380,15 +381,20 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
   } # end for i
   
   # Return either a list or a full table
-  if (list | length(vars) <= 1){
+  if (list){
     return(list_results)
   } else{
-    # Put into a single table
-    tib <- list_results[[1]]
-    for (j in 2:length(list_results)){
-      tib <- rbind(tib, list_results[[j]])
-    } # end j
-    return(tib)
+    # Also deal with just single value in vars
+    if(!is.null(vars) & length(vars) <= 1){
+      return(list_results)
+    } else{
+      # Put into a single table
+      tib <- list_results[[1]]
+      for (j in 2:length(list_results)){
+        tib <- rbind(tib, list_results[[j]])
+      } # end j
+      return(tib)
+    }
   } # end else
   
   
