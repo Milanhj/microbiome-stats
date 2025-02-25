@@ -67,7 +67,7 @@ for each level of the dependent variable.
 
 **Usage**
 
-`display_deseq_results(mod, vars, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)`
+`display_deseq_results(mod, vars = NULL, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)`
 
 **Arguments**
 
@@ -77,7 +77,8 @@ mod
 
 vars
 
--   The names of which variables to include in the output table
+-   Optional vector with the names of which variables to include in the output table. 
+For visualization purposes only. 
 
 var_label
 
@@ -107,7 +108,7 @@ Used to output DESeq2 results for each variable in a design formula with multipl
 
 **Usage**
 
-`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type = "custom", vars, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, var_label = NULL, digits = NULL)`
+`fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = "Wald", sf_type = "custom", total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, vars = NULL, var_label = NULL, digits = NULL)`
 
 **Arguments**
 

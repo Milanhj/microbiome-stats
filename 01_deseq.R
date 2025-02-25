@@ -172,51 +172,58 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
   #> p.adjust.method: whether or not to correct for multiple comparisons
     #> string for which p.adjust method to use
   #> na.rm: if TRUE, NA rows are removed
-display_deseq_results <- function(mod, vars, digits = NULL, var_label = NULL,
+
+display_deseq_results <- function(mod, vars = NULL, var_label = NULL, digits = NULL,
                                   p.adjust.method = NULL, na.rm = FALSE){
-  
-  # if no var_label provided, use a generic one
-  if(is.null(var_label)){ 
-    var_label <- "outcome"} else{
-      var_label <- var_label
-    }
+  # Start with a generic variable name for levels
+  default_label <- "outcome"
   
   # Matrix to store Values
   pvals <- matrix(
     nrow = length(rownames(mod)),
     ncol = 4,
-    dimnames = list(NULL, c(var_label, "log2foldchange", "lfcSE", "p_value")))
+    dimnames = list(NULL, c(default_label, "log2foldchange", "lfcSE", "p_value")))
   
   for (i in 1:length(rownames(mod))){
-    
+    # Pull out rowname from deseq output to store dat in matrix
     row_name <- rownames(mod)[i]
+    # Store values
+    pvals[i, 1] <- row_name
+    pvals[i, 2] <- as.numeric(mod$log2FoldChange[i])
+    pvals[i, 3] <- as.numeric(mod$lfcSE[i])
+    pvals[i, 4] <- as.numeric(mod$pvalue[i])
     
-    if (any(row_name == vars)){
-      
-      if (is.null(digits)) { # don't round
-        pvals[i, 1] <- row_name
-        pvals[i, 2] <- as.numeric(mod$log2FoldChange[i])
-        pvals[i, 3] <- as.numeric(mod$lfcSE[i])
-        pvals[i, 4] <- as.numeric(mod$pvalue[i])
-        
-      } else{ # Round to digits
-        pvals[i, 1] <- row_name
-        pvals[i, 2] <- round(as.numeric(mod$log2FoldChange[i]), digits = digits)
-        pvals[i, 3] <- round(as.numeric(mod$lfcSE[i]), digits = digits)
-        pvals[i, 4] <- round(as.numeric(mod$pvalue[i]), digits = digits)
-      } # end ifelse 2
-      
-    } else { next }
-    
-  } # end loop
+  } # end for i
   
-  if (na.rm){ # remove the NA levels
-    # Filter NA
-    pvals_tibble <- as_tibble(pvals) %>% 
-      filter(!is.na(p_value))       
+  # Deal with variable level display
+  if (!is.null(vars)){ # select just levels included in vars
+    
+    # Create a temporary tibble for pulling out the variables you want
+    # Extra steps so any length of vars can be used
+    temp_tib <- as_tibble(pvals)
+    
+    # Optional padjust for multiple comparisons
+    if (!is.null(p.adjust.method)) {
+      temp_tib <- temp_tib %>% 
+        mutate(p.adjust.method = p.adjust(p_value, method = p.adjust.method) 
+        )
+    }
+    # Filter for just the variables listed in vars
+    pvals_tibble <- tibble(
+      outcome = temp_tib$outcome[temp_tib$outcome %in% vars]
+    ) %>% 
+      left_join(temp_tib, by = "outcome")
+    
   } else{
     # Make pvals into tibble without filtering
     pvals_tibble <- as_tibble(pvals)
+    
+    # Optional padjust for multiple comparisons
+    if (!is.null(p.adjust.method)) {
+      pvals_tibble <- pvals_tibble %>% 
+        mutate(p.adjust.method = p.adjust(p_value, method = p.adjust.method) 
+        )
+    }
   } # end ifelse
   
   # Get variables into the format we want them in
@@ -228,19 +235,26 @@ display_deseq_results <- function(mod, vars, digits = NULL, var_label = NULL,
       foldchange = 2^log2foldchange
     ) %>% 
     relocate(foldchange, .after = log2foldchange) %>%
-    arrange(var_label)
+    arrange(default_label)
   
+  # Rename outcome if a variable label is given
+  if (!is.null(var_label)){
+    colnames(pvals_tibble)[colnames(pvals_tibble) == "outcome"] <- var_label
+  }
+  # Round if digits provided
   if (!is.null(digits)){
     pvals_tibble <- pvals_tibble %>% 
-      mutate(foldchange = round(foldchange, digits))
-  }
-  
-  # Run an optional FDR
-  if (!is.null(p.adjust.method)) {
-    pvals_tibble <- pvals_tibble %>% 
-      mutate(p.adjust.method = p.adjust(p_value, method = p.adjust.method) 
-      )
-  } 
+      mutate(
+        p_value = round(p_value, digits = digits),
+        lfcSE = round(lfcSE, digits = digits),
+        log2foldchange = round(log2foldchange, digits = digits),
+        foldchange = round(foldchange, digits))
+    # If padjust in there too, round that as well
+    if(!is.null(p.adjust.method)){
+      pvals_tibble <- pvals_tibble %>% 
+        mutate(p.adjust.method = round(p.adjust.method, digits = digits))
+    }
+  } # end if
   
   return(pvals_tibble)
   
@@ -250,7 +264,7 @@ display_deseq_results <- function(mod, vars, digits = NULL, var_label = NULL,
 # fit_deseq2(): do_deseq and display_deseq_results wrapped together
 # outputs a list of tables for each variable level (gene) with results for each independent variable 
 # Use this function to output results for each variable in a design formula with multiple independent variables
-fit_deseq2 <- function(dat, stop_col, formulas, vars,
+fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
                        sf_type = "custom", total_counts = NULL, 
                        p.adjust.method = NULL, list = TRUE,
                        alpha = 0.05, test = "Wald",
@@ -270,6 +284,7 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars,
       raw_out, vars = vars, var_label, digits = digits, 
       p.adjust.method = p.adjust.method, na.rm = na.rm
     )
+    
     # Add the name of the variable to the list
     covs <- str_split_1(
       as.character(formulas[[i]]), pattern = "[\\s]*\\+[\\s]*"
@@ -302,16 +317,27 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars,
       
     } # end for j
     
-    # Fill slot for each level
-    list_results[[i]] <- as_tibble(store_dat)
+    # Make outputs numeric
+    final_tib <- as_tibble(store_dat) %>% 
+      mutate(log2foldchange = as.numeric(log2foldchange),
+             foldchange = as.numeric(foldchange),
+             lfcSE = as.numeric(lfcSE),
+             p_value = as.numeric(p_value)
+      )
+    # If padjust used, make that column numeric too
+    if (!is.null(p.adjust.method)){
+      final_tib <- final_tib %>% 
+        mutate(p.adjust.method = as.numeric(p.adjust.method))
+    } 
     
+    # Fill slot for each level
+    list_results[[i]] <- final_tib
   } # end for i
   
   # Return either a list or a full table
-  if (list){
+  if (list | length(vars) <= 1){
     return(list_results)
   } else{
-    
     # Put into a single table
     tib <- list_results[[1]]
     for (j in 2:length(list_results)){
@@ -322,8 +348,6 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars,
   
   
 } # end function
-
-
 
 
 
@@ -353,6 +377,16 @@ result_wald_fdr <- display_deseq_results(
   out_wald, vars = count_col_names, var_label = "x", p.adjust.method = "fdr")
 
 result_wald_fdr
+
+
+
+# For just a subset of variables
+result_wald_subset <- display_deseq_results(
+  out_wald, vars = c("x1", "x5", "x18"), var_label = "x")
+
+result_wald_subset
+
+
 
 
 ### tx and time -------------------
