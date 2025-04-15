@@ -140,16 +140,69 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
       # Make sure col_data and count_data match
       if (unique(rownames(col_data) != colnames(count_data))) break
       
-      # Create DESeq Data Object
-      dds <- DESeqDataSetFromMatrix(
-        countData = count_data,
-        colData = col_data,
-        # Full model
-        design = formula # ~ group + timepoint + group:timepoint
-      )
+      if (ordered){ 
+        # Manually make the design matrix to include ordered factors
+        design_matrix <- model.matrix(formula, data = col_data)
+        reduced_matrix <- model.matrix(reduced, data = col_data)
+        
+        # Create DESeq Data Object
+        dds <- DESeqDataSetFromMatrix(
+          countData = count_data,
+          colData = col_data,
+          design = design_matrix # group
+        )
+      } else{
+        
+        # Create DESeq Data Object
+        dds <- DESeqDataSetFromMatrix(
+          countData = count_data,
+          colData = col_data,
+          design = formula # group
+        )
+      }
+      # 
+      # # Create DESeq Data Object
+      # dds <- DESeqDataSetFromMatrix(
+      #   countData = count_data,
+      #   colData = col_data,
+      #   # Full model
+      #   design = formula # ~ group + timepoint + group:timepoint
+      # )
       
-      # Store Model object with reduced model
-      deseq_mod <- DESeq(dds, test = test, reduced = reduced) # ~group + timepoint
+      if (sf_type == "median_ratio"){
+        
+        if (ordered){
+          # Store Model object with reduced model for ordinal var
+          deseq_mod <- DESeq(dds, test = test, reduced = reduced_matrix) # ~group + timepoint
+        } else{
+          # Store Model object with reduced model
+          deseq_mod <- DESeq(dds, test = test, reduced = reduced) # ~group + timepoint
+        }
+        
+      } else{
+        
+        if(sf_type == "custom"){
+          
+          # Calculate the geometric mean of total counts
+          geo_mn <- exp(mean(log(total_counts))) 
+          # Custom size factors
+          custom_sf <- total_counts/geo_mn
+          # Manually set size factors
+          sizeFactors(dds) <- custom_sf 
+          
+          if (ordered){
+            # Store Model object using 
+            deseq_mod <- DESeq(dds, fitType = "parametric",
+                               test = test, reduced = reduced_matrix)
+          } else{
+            # Store Model object using 
+            deseq_mod <- DESeq(dds, fitType = "parametric",
+                               test = test, reduced = reduced)
+          }
+        } else{ 
+          stop("invalid sf_type input") 
+        } # ifelse 2
+      }
       
       # Store Results
       mod_results <- results(deseq_mod, alpha = alpha)
@@ -161,8 +214,6 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
   return(mod_results)
   
 } # End function
-
-
 
 # Display DESeq output in a cleaner, more easy to work with way
   #> mod: model output from my do_deseq() function or package results(DESeq())
@@ -421,7 +472,7 @@ result_group_time
 out_LRT <- do_deseq(counts, stop_col = 3, 
                     formula = ~ group + timepoint + group:timepoint,
                     reduced = ~ group + timepoint,
-                    sf_type = "median-ratio",
+                    sf_type = "median_ratio",
                     alpha = 0.05, test = "LRT")
 
 # Visualize results
