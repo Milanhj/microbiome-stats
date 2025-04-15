@@ -38,7 +38,7 @@ count_col_names <- colnames(counts[,-c(1:3)])
   #> ordered: is one of the covariates ordered? if yes, set to TRUE
 
 do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
-                     sf_type, total_counts = NULL,
+                     sf_type = "custom", total_counts = NULL,
                      ordered = FALSE, reduced = NULL){
   
   # Rename id column id if it isn't already
@@ -276,7 +276,7 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
   for (i in 1:length(formulas)){
     # Get the raw DESeq2 output
     raw_out <- do_deseq(dat, stop_col = stop_col, sf_type = sf_type, 
-                        total_counts = total_counts, 
+                        total_counts = total_counts, ordered = ordered,
                         formula = formulas[[i]][[1]], test = test) 
     
     # Organize raw output into a easier table
