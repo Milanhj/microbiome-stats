@@ -17,6 +17,7 @@ counts <- read_rds("data/simulated_counts.rds")
 count_col_names <- colnames(counts[,-c(1:3)])
 
 
+
 # Functions --------------------------------------------------------------------
 
 # Raw output from DESeq2 package 
@@ -408,71 +409,115 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 
 
 
-# Workflows --------------------------------------------------------------------
 
 
+# Treatment Wald --------------------------------------------------------------
 
-## Treatment Wald --------------------------------
+
+## just tx  -------------------------------------------------
 
 
-### just tx -------------------
+### custom offset --------------------------
 
 # Test differential expression between treatment arms
-out_wald <- do_deseq(counts, stop_col = 3, alpha = 0.05, test = "Wald",
+out_wald_csf <- do_deseq(counts, stop_col = 4, alpha = 0.05, test = "Wald",
+                         formula = ~ group, sf_type = "custom",
+                         total_counts = counts$total_counts
+                         )
+
+# Visualize results for p.adjust.method = bonferroni-holm
+result_wald_csf <- display_deseq_results(
+  out_wald_csf, vars = count_col_names, var_label = "x",
+  p.adjust.method = "holm") 
+
+result_wald_csf
+
+
+
+### median ratio ------------------
+
+
+# Test differential expression between treatment arms
+out_wald_mr <- do_deseq(counts, stop_col = 4, alpha = 0.05, test = "Wald",
                      formula = ~ group, sf_type = "median_ratio")
 
 # Visualize results for p.adjust.method = NULL
-result_wald <- display_deseq_results(
-  out_wald, vars = count_col_names, var_label = "x",
+result_wald_mr <- display_deseq_results(
+  out_wald_mr, vars = count_col_names, var_label = "x",
   p.adjust.method = NULL)
 
-result_wald
+result_wald_mr
+
 
 
 # Visualize results for p.adjust.method 
 result_wald_fdr <- display_deseq_results(
-  out_wald, vars = count_col_names, var_label = "x", p.adjust.method = "fdr")
+  out_wald_mr, vars = count_col_names, var_label = "x", p.adjust.method = "fdr")
 
 result_wald_fdr
 
 
-
 # For just a subset of variables
 result_wald_subset <- display_deseq_results(
-  out_wald, vars = c("x1", "x5", "x18"), var_label = "x")
+  out_wald_mr, vars = c("x1", "x5", "x18"), var_label = "x")
+
 
 result_wald_subset
 
 
 
 
-### tx and time -------------------
+## tx and time ------------------------------------------------
 
 
 # Define both formulas 
 formulas <- list(c(~ timepoint + group), c(~ group + timepoint))
 
+
+
+### custom offset -----------------------
+
+
 # Run wrapped function
-result_group_time <- fit_deseq2(dat = counts, stop_col = 3, formulas = formulas, 
+result_group_time_csf <- fit_deseq2(dat = counts, stop_col = 4, formulas = formulas, 
+                                    alpha = 0.05, test = "Wald", 
+                                    sf_type = "custom",
+                                    total_counts = counts$total_counts,
+                                    na.rm = FALSE, p.adjust.method = "fdr",
+                                    vars = count_col_names, 
+                                    var_label = "x", digits = 4
+)
+result_group_time_csf
+
+
+
+### median ratio ------------------------
+
+
+# Run wrapped function
+result_group_time_mr <- fit_deseq2(dat = counts, stop_col = 4, formulas = formulas, 
                                 alpha = 0.05, test = "Wald", 
                                 sf_type = "median_ratio",
                                 na.rm = FALSE, p.adjust.method = "fdr",
                                 vars = count_col_names, 
                                 var_label = "x", digits = 4
            )
-result_group_time
+result_group_time_mr
 
 
 
 
-## Longitudinal LRT --------------------------------
+
+# Longitudinal LRT -------------------------------------------------------------
+
 
 
 # Test treatment_arm:timepoint
-out_LRT <- do_deseq(counts, stop_col = 3, 
+out_LRT <- do_deseq(counts, stop_col = 4, 
                     formula = ~ group + timepoint + group:timepoint,
                     reduced = ~ group + timepoint,
-                    sf_type = "median_ratio",
+                    sf_type = "custom",
+                    total_counts = counts$total_counts,
                     alpha = 0.05, test = "LRT")
 
 # Visualize results
