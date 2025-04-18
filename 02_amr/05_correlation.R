@@ -8,7 +8,7 @@ library(tidyverse)
 # Load Data --------------------------------------------------------------------
 
 # Simulated count data
-counts <- read_rds("data/simulated_counts.rds")
+counts <- read_rds("01_data/simulated_counts.rds")
 
 just_counts <- counts[,-c(1:3)]
 

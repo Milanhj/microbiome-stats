@@ -11,7 +11,7 @@ library(DESeq2)
 # Load Data --------------------------------------------------------------------
 
 # Simulated count data
-counts <- read_rds("data/simulated_counts.rds")
+counts <- read_rds("01_data/simulated_counts.rds")
 
 # Store count column names
 count_col_names <- colnames(counts[,-c(1:3)])
@@ -422,7 +422,7 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 # Test differential expression between treatment arms
 out_wald_csf <- do_deseq(counts, stop_col = 4, alpha = 0.05, test = "Wald",
                          formula = ~ group, sf_type = "custom",
-                         total_counts = counts$total_counts
+                         total_counts = counts$total_reads
                          )
 
 # Visualize results for p.adjust.method = bonferroni-holm
@@ -482,7 +482,7 @@ formulas <- list(c(~ timepoint + group), c(~ group + timepoint))
 result_group_time_csf <- fit_deseq2(dat = counts, stop_col = 4, formulas = formulas, 
                                     alpha = 0.05, test = "Wald", 
                                     sf_type = "custom",
-                                    total_counts = counts$total_counts,
+                                    total_counts = counts$total_reads,
                                     na.rm = FALSE, p.adjust.method = "fdr",
                                     vars = count_col_names, 
                                     var_label = "x", digits = 4
@@ -517,7 +517,7 @@ out_LRT <- do_deseq(counts, stop_col = 4,
                     formula = ~ group + timepoint + group:timepoint,
                     reduced = ~ group + timepoint,
                     sf_type = "custom",
-                    total_counts = counts$total_counts,
+                    total_counts = counts$total_reads,
                     alpha = 0.05, test = "LRT")
 
 # Visualize results
