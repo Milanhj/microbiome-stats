@@ -1,7 +1,7 @@
 
-# RCT microbiome analysis
+# RCT AMR and microbiome analysis
 
-Collected function documentation for comparing differences in microbiomes and resistomes of treatment arms.
+Collected function documentation for comparing differences in microbiomes and resistomes between treatment arms.
 Example code uses simulated count data. All scripts include commented functions with documentation. 
 
 <br>
@@ -120,12 +120,205 @@ formulas
 DESeq2 returns results for the final variable in the formula. 
 Must input formulas with condition of interest in the final position for each independent variable.
 
-- formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))
+- `formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))`
 
 
 p.adjust.method
 
 - method for p.adjust(). If NULL, no values are returned
+
+
+<br>
+
+
+# T-Tests
+
+### Description
+
+Pairwise comparison of treatment arms.
+Option to log2 transform reads per million with $Log_2(rM + {\frac{1}{total reads}} \cdot 1,000,000)$
+
+**Usage**
+
+`ttest_log2rm(dat, group_col, tot_reads_col, start_col, time_col, list = FALSE, log2 = TRUE)`
+
+**Arguments**
+
+dat
+
+- dataset with counts. All meta-data must precede count columns
+
+start_col 
+
+- the index of first column with counts
+
+group_col 
+
+- index of grouping column (tx)
+
+total_reads_col 
+
+- column with total non-human read numbers for log transforming
+
+time_col 
+
+- time (longitudinal) or measurment month/year
+
+log2 
+
+- should the data be log2 transformed?
+
+list 
+
+- list = TRUE will return results in list format
+- list = FALSE will return results as a single table
+
+<br>
+
+
+### Description
+
+Pairwise comparison of treatment arms 
+with permutation based Westfall-Young Min-P adjustment for multiple comparisons.
+Wrapping function that calls `ttest_log2rm()`.
+Option to log2 transform reads per million with $Log_2(rM + {\frac{1}{total reads}} \cdot 1,000,000)$
+
+
+**Usage**
+
+`ttest_min_p(dat, B = 999, group_col, tot_reads_col, start_col, time_col, list = FALSE, log2 = TRUE)`
+
+**Arguments**
+
+dat
+
+- dataset with counts. All meta-data must precede count columns
+
+B
+
+- number of permutations. Default is 9999
+
+start_col 
+
+- the index of first column with counts
+
+group_col 
+
+- index of grouping column (tx)
+
+total_reads_col 
+
+- column with total non-human read numbers for log transforming
+
+time_col 
+
+- time (longitudinal) or measurment month/year
+
+log2 
+
+- should the data be log2 transformed
+
+list 
+
+- list = TRUE will return results in list format
+- list = FALSE will return results as a single table
+
+<br>
+
+
+# Wilcoxon Rank Sum
+
+
+### Description
+
+Wilcoxon rank sum test at a single time. 
+
+**Usage**
+
+`rank_sum(dat)`
+
+**Arguments**
+
+dat
+
+- dataset with just rM or counts and grouping variable (treatment arm)
+- grouping variable must be in 1st column, followed by count columns
+
+
+<br>
+
+### Description
+
+Wilcoxon rank sum test for all timepoints in a study. 
+Returns results for all classes in each timepoint in a single table
+
+**Usage**
+
+`rank_sum_longitudinal(dat, time_col, group_col, start_col)`
+
+**Arguments**
+
+dat
+
+- dataset with counts. All meta-data must precede count columns
+
+start_col 
+
+- the index of first column with counts
+
+group_col 
+
+- index of grouping column (tx)
+
+total_reads_col 
+
+- column with total non-human read numbers for log transforming
+
+time_col 
+
+- time (longitudinal) or measurment month/year. 
+
+<br>
+
+
+
+### Description
+
+Wilcoxon rank sum test for all timepoints in a study with Westfall-Young Min-p adjustment for multiple comparisons.
+Calls `rank_sum_longitudinal()`
+
+**Usage**
+
+`rank_sum_longitudinal(dat, time_col, group_col, start_col)`
+
+**Arguments**
+
+dat
+
+- dataset with counts. All meta-data must precede count columns
+
+B
+
+- number of permutations
+
+start_col 
+
+- the index of first column with counts
+
+group_col 
+
+- index of grouping column (tx)
+
+total_reads_col 
+
+- column with total non-human read numbers for log transforming
+
+time_col 
+
+- time (longitudinal) or measurment month/year. 
+If the study is not longitudinal, use seperate datasets for pre and post intervention min-p
+
+
 
 
 <br>
@@ -356,13 +549,34 @@ digits
 
 # Longitudinal Results
 
+
+### Description
+
+Combine all output values from different timepoints into a single table.
+
+**Usage**
+
+`combine_table(list_results, var_col, var_name, bind = FALSE)`
+
+**Arguments**
+
+grp_name
+
+-   The name of the test group to pull out (for example, "MLS")
+
+
+<br>
+
+
+
+
 ### Description
 
 Combine p-value outputs for different timepoints in a single table.
 
 **Usage**
 
-`combine_table(list_results, var_col, var_name, bind = FALSE)`
+`combine_pval_table(list_results, var_col, var_name, bind = FALSE)`
 
 **Arguments**
 

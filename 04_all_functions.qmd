@@ -405,6 +405,389 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 
 <br>
 
+# T-Tests
+
+`ttest_log2rm(dat, group_col, tot_reads_col, start_col, time_col, list = FALSE, log2 = TRUE)`
+```{r}
+#| label: base-ttest-log2rm-function
+
+# start_col: the index of first column with counts
+# group_col: grouping column (tx)
+# total_reads_col: column with total non-human read numbers for log transforming
+# time_col: time (longitudinal) or measurment month/year
+  # if not a longitudinal study, use seperate datasets for pre.post intervention min-p calculation
+# log2: should the data be log2+e transformed? log2(MLS + 1/total_reads*1000000)
+# list: do you want the results to be returned in list format?
+ttest_log2rm <- function(dat, group_col, tot_reads_col, start_col, time_col,
+                         list = FALSE, log2 = TRUE){
+  
+  # Store variable (e.g. drug class names)
+  rm_names <- colnames(dat)[start_col:length(colnames(dat))]
+  
+  # Change column names to generic names
+  colnames(dat)[tot_reads_col] <- "total_reads"
+  colnames(dat)[group_col] <- "group"
+  colnames(dat)[time_col] <- "timepoint"
+  
+  if(list){ # Store in a list
+    result <- list()
+  }else{ # Store in a single table
+    result <- tibble(timepoint = NA, var = NA, pval = NA)
+  }
+  # Loop for class
+  for (i in 1:length(rm_names)){ # t-test for each time for class i
+    
+    # The index for class i
+    dat_col <- which(names(dat) == rm_names[i]) # i
+    
+    # Subset data and log transform class i to create variable log2
+    dat_log2 <- dat[, c(time_col, group_col, tot_reads_col, dat_col)] %>% 
+      mutate(log2 = log2(!!sym(rm_names[i]) + 1/total_reads*1000000)) %>% 
+      # Also give the original variable a generic name
+      dplyr::rename(untrans = !!sym(rm_names[i]))
+    
+    # Store vector of times for class i
+    times <- sort(unique(dat_log2$timepoint))
+    
+    # Create a matrix to hold t-test results for each timepoint
+    mttest <- matrix(ncol = 3, nrow = length(times),
+                     dimnames = list(NULL, c("timepoint", "var", "pval")))
+    # Loop for time
+    for (j in 1:length(times)){
+      # Filter for just the correct timepoint
+      dat_tp <- dat_log2 %>% 
+        filter(timepoint == times[j])
+      # Store time and class name
+      mttest[j,1] <- times[j]
+      mttest[j,2] <- rm_names[i]
+      # T-test with either the original variable or the log2 transformed
+      if (log2){ # log2 
+        mttest[j,3] <- t.test(log2 ~ group, data = dat_tp)$p.value
+      } else{ # raw data
+        mttest[j,3] <- t.test(untrans ~ group, data = dat_tp)$p.value
+      }
+    } # j
+    
+    # Store Results
+    if(list){ # Store in a list
+      result[[i]] <- as_tibble(mttest) %>% 
+        mutate(
+          timepoint = as.numeric(timepoint),
+          pval = as.numeric(pval)
+        )
+    }else{ # Store in a single table
+      # Bind results from class i to the overall result table
+      result <- rbind(result,
+                      as_tibble(mttest) %>% 
+                        mutate(
+                          timepoint = as.numeric(timepoint),
+                          pval = as.numeric(pval)
+                        ))
+      # If it's the first iteration, take off the top row with NA used to initialize
+      if(i == 1){result <- result[-1,]}
+    }
+  } # i
+  return(result) 
+} # end function
+
+```
+
+
+`ttest_min_p(dat, B = 999, group_col, tot_reads_col, start_col, time_col, list = FALSE, log2 = TRUE)`
+
+```{r}
+#| label: minp-ttest-log2rm-function
+
+# Runs ttest_log2rm() and Min-p for multiple comparisons
+# Same output as ttest_log2rm() but with adjusted p-value
+  #> B: number of permutations
+  #> start_col: the index of first column with counts
+  #> group_col: grouping column (tx)
+  #> total_reads_col: column with total non-human read numbers for log transforming
+  #> time_col: time (longitudinal) or measurment month/year
+    #> if not a longitudinal study, use seperate datasets for pre.post intervention min-p calculation
+  #> log2: should the data be log2+e transformed? log2(MLS + 1/total_reads*1000000)
+  #> list: do you want the results to be returned in list format?
+ttest_min_p <- function(dat, B = 999, group_col, tot_reads_col, 
+                        start_col, time_col, 
+                        list = FALSE, log2 = TRUE){
+  
+  # Make sure group column is named tx
+  colnames(dat)[group_col] <- "tx"
+  
+  # Sort and store timepoints
+  times <- sort(as.numeric(unique(as.vector(unlist(dat[,time_col])))))
+  
+  # Vector of class names
+  rM_names <- colnames(dat)[c(start_col:ncol(dat))]
+  
+  # Call function to compute observed pvalues
+  observed_result_table <- ttest_log2rm(
+    dat = dat, group_col = group_col, 
+    tot_reads_col = tot_reads_col, 
+    start_col = start_col, time_col = time_col,
+    list = list, log2 = log2
+  )
+  # Store observed P-values
+  observed_p_values <- observed_result_table$pval
+  # Extract observed minimum P-value
+  observed_min_p <- min(observed_p_values, na.rm = TRUE)
+  
+  # Storage for permuted minimum P-values (numeric vector)
+  min_perm_p_values <- numeric(B)
+  
+  for (b in 1:B) { # Permutation loop
+    
+    # Sample IDs without replacement
+    perm_dat <- dat %>% 
+      mutate(tx = sample(tx, length(tx), replace = FALSE))
+    
+    # Compute p-values from permuted data
+    perm_p_values <- ttest_log2rm(
+      dat = perm_dat, group_col = group_col, 
+      tot_reads_col = tot_reads_col, 
+      start_col = start_col, time_col = time_col,
+      list = list, log2 = log2
+    )
+    # Store minimum P-value from vector of permuted p-values
+    min_perm_p_values[b] <- min(perm_p_values$pval, na.rm = TRUE)
+    
+  } # for b
+  
+  # Tibble to hold adjusted p-values
+  m_padj <- tibble(
+    timepoint = rep(times, length(rM_names)),
+    var = observed_result_table$var,
+    minp_adj = rep(0)
+  )
+  # Adjust P-values
+  for (i in 1:length(observed_p_values)) {
+    # Proportion of permuted min p values less than or equal to the observed p-value i
+    m_padj[i,3] <- mean(min_perm_p_values <= observed_p_values[i])
+    
+  } # for i
+  
+  # Join to raw p-value from observed results
+  padj_result_table <- observed_result_table %>% 
+    left_join(m_padj, by = c("var", "timepoint"))
+  
+  return(padj_result_table)
+} # end function
+```
+
+<br>
+
+# Rank Sum Test
+
+`rank_sum(dat)`
+```{r}
+#| label: wilcoxon-rs-test-base
+
+#> dat: dataset with just rM/counts and grouping variable in 1st column
+  #> grouping variable must be in 1st column, followed by count columns
+rank_sum <- function(dat){
+  
+  # Arrange by grouping variable
+  dat <- dat %>% arrange(!!sym(colnames(dat)[1]))
+  
+  # Create a matrix to store results with rows = the number of rM columns
+  res_matrix <- matrix(ncol = 2, nrow = ncol(dat)-1,
+                       dimnames = list(NULL, c("var", "p_value")))
+  
+  for (i in 1:nrow(res_matrix)){
+    # Store data with tx group (1) and class column i (i+1)
+    dat_col <- dat[,c(1,i+1)] 
+    
+    # Store class name
+    res_matrix[i,1] <- colnames(dat_col)[2]
+    
+    # Skip any columns with all 0s
+    if (all(dat_col[,2] == 0)) {
+      next
+    } 
+    # Rank sum test and store in p-value column (2): class_i_counts ~ tx
+    res_matrix[i,2] <-
+      wilcox.test(dat_col[,2][[1]] ~ dat_col[,1][[1]],
+                  data = dat_col)$p.value
+  } # for i
+  
+  # Make output into a tibble
+  res_matrix <- as_tibble(res_matrix) %>% 
+    mutate(p_value = if_else(!is.nan(p_value), as.numeric(p_value), NA))
+  # Return result matrix
+  return(res_matrix)
+  
+} # end function
+```
+
+`rank_sum_longitudinal(dat, time_col, group_col, start_col)`
+```{r}
+#| label: ranksum-longitudinal
+
+# Wilcoxon rank sum test for all timepoints in a study
+  #> dat: dataset with all meta data before count columns 
+  #> start_col: the index of first column with counts
+  #> group_col: grouping column (tx)
+  #> time_col: time (longitudinal) or measurment month/year
+rank_sum_longitudinal <- function(dat, time_col, group_col, start_col){
+  
+  # Sort and store timepoints
+  times <- sort(as.numeric(unique(as.vector(unlist(dat[,time_col])))))
+  
+  # Names of the classes
+  rM_names <- colnames(dat)[start_col:ncol(dat)]
+  # Name the grouping column 
+  colnames(dat)[group_col] <- "group"
+  # Name the time column
+  colnames(dat)[time_col] <- "timepoint"
+  
+  # Tibble for storing results for all time points
+  all_result <- tibble(timepoint = NA, var = NA, p_value = NA)
+  
+  for (t in 1:length(times)){
+    # Filter for time t, remove all variables except counts and group column
+    # Arrange by grouping variable
+    dat_t <- dat %>% 
+      filter(timepoint == times[t]) %>% 
+      select(group, all_of(rM_names)) %>% 
+      arrange(group)
+    
+    # Create a matrix to store results with rows = the number of rM columns
+    res_matrix <- matrix(
+      ncol = 3, nrow = length(rM_names), 
+      dimnames = list(NULL, c("timepoint", "var", "p_value"))
+    )
+    
+    for (i in 1:length(rM_names)){
+      # Store data with tx group (1) and class column i (i+1)
+      dat_col <- dat_t[,c(1,i+1)] 
+      
+      # Store timepoint
+      res_matrix[i,1] <- times[t]
+      # Store class name
+      res_matrix[i,2] <- colnames(dat_col)[2]
+      
+      # Skip any columns with all 0s
+      if (all(dat_col[,2] == 0)) {
+        next
+      } 
+      # Rank sum test and store in p-value column (2): class_i_counts ~ tx
+      res_matrix[i,3] <-
+        wilcox.test(dat_col[,2][[1]] ~ dat_col[,1][[1]],
+                    data = dat_col)$p.value
+    } # for i
+    
+    # Bind to the storing tibble
+    all_result <- all_result %>% 
+      rbind( # Make output into a tibble
+        as_tibble(res_matrix) %>% 
+          mutate(
+            timepoint = as.numeric(timepoint),
+            p_value = if_else(!is.nan(p_value), as.numeric(p_value), NA))
+      )
+    
+    # If first iteration of the loop, remove NA row used to initialize the tibble
+    if (t == 1){
+      all_result <- all_result[-1,]
+    }
+    
+  } # for t
+  
+  # Return result matrix
+  return(all_result)
+  
+} # end function
+
+```
+
+
+
+`rank_sum_minp(dat, time_col, group_col, start_col, B = 9999)`
+```{r}
+#| label: ranksum-minp
+
+# Wilcoxon rank sum test for all timepoints in a study
+# Westfall-Young Min-p adjustment for multiple comparisons
+  #> dat: dataset with all meta data before count columns 
+  #> B: number of permutations
+  #> start_col: the index of first column with counts
+  #> group_col: grouping column (tx)
+  #> total_reads_col: column with total non-human read numbers for log transforming
+  #> time_col: time (longitudinal) or measurment month/year
+    #> if not a longitudinal study, use seperate datasets for pre.post intervention min-p calculation
+rank_sum_minp <- function(dat, time_col, group_col, start_col, B = 9999){
+  
+  # Sort and store timepoints
+  times <- sort(as.numeric(unique(as.vector(unlist(dat[,time_col])))))
+  # Names of the classes
+  rM_names <- colnames(dat)[start_col:ncol(dat)]
+  # Make sure group column is named tx
+  colnames(dat)[group_col] <- "tx"
+  
+  # Call function to compute observed pvalues
+  observed_result_table <- rank_sum_longitudinal(dat, time_col = time_col, 
+                                                 group_col = group_col,
+                                                 start_col = start_col)
+  # Store p-values
+  observed_p_values <- observed_result_table$p_value
+  
+  # Extract observed minimum P-value
+  observed_min_p <- min(observed_p_values, na.rm = TRUE)
+  
+  # Storage for permuted minimum P-values (numeric vector)
+  min_perm_p_values <- numeric(B)
+  
+  #min_perm_p_values <- tibble(nrow = B, ncol = 2)
+  
+  for (b in 1:B) { # Permutation loop
+    
+    # Sample IDs without replacement
+    perm_dat <- dat %>% 
+      mutate(tx = sample(tx, length(tx), replace = FALSE))
+    
+    # Compute p-values from permuted data
+    perm_p_result <- rank_sum_longitudinal(perm_dat, time_col = time_col,
+                                           group_col = group_col, 
+                                           start_col = start_col
+    )
+    # Record minimum P-value from vector of permuted p-values
+    min_perm_p_values[b] <- min(perm_p_result$p_value, na.rm = TRUE)
+    
+  } # for b
+  
+  # Use this look to create the correct time labels
+  # The rank sum function does all classes for each time individually, so need 18 of each timepoint sequentially
+  time_var <- c()
+  # Build a vector of times
+  for (t in 1:length(times)){
+    time_var <- append(time_var, rep(times[t], length(rM_names)))
+  }
+  
+  # Adjust P-values
+  m_padj <- tibble(
+    timepoint = time_var,
+    var = rep(rM_names, length(times)),
+    minp_adj = rep(0)
+  )
+  for (i in 1:length(observed_p_values)) {
+    # Proportion of permuted min p values less than or equal to the observed p-value i
+    m_padj[i,3] <- mean(min_perm_p_values <= observed_p_values[i])
+    
+  } # for i
+  
+  padj_result_table <- observed_result_table %>% 
+    left_join(m_padj, by = c("var", "timepoint"))
+  
+  # Return results
+  return(padj_result_table)
+  
+} # end function
+
+
+```
+
+<br>
+
 
 # Diversity
 
@@ -1008,10 +1391,51 @@ corr_fdr <- function(dat, method = "spearman", p.adjust.method = "fdr",
 
 # Longitudinal Results
 
-`combine_table(list_results, var_col, var_name, bind = FALSE)`
+
+`combine_result_table(list_results, grp_name)`
 
 ```{r}
-#| label: longitudinal-combine-table
+#| label: longitudinal-combine-table-all-result
+
+# Combines all outputs for different timepoints into a single table
+  #> Use this function over combine_pval_table()
+  #> grp_name: the name of the test group to pull out (i.e. "MLS")
+combine_result_table <- function(list_results, grp_name){
+  
+  # Rename first column something generic
+  colnames(list_results[[1]])[1] <- "var"
+  
+  tib_base <- list_results[[1]] %>% 
+    filter(var == grp_name) %>% 
+    mutate(timepoint = 0) %>% 
+    relocate(timepoint, .after = "var")
+  
+  
+  for (i in 2:length(list_results)){
+    
+    # Rename first column something generic
+    colnames(list_results[[i]])[1] <- "var"
+    
+    tib_time_i <- list_results[[i]] %>% 
+      filter(var == grp_name) %>% 
+      mutate(timepoint = i-1) %>% 
+      relocate(timepoint, .after = "var")
+    
+    tib_base <- rbind(tib_base, tib_time_i)
+    
+  } # end for
+  
+  return(tib_base)
+  
+} # end function
+```
+
+
+
+`combine_pval_table(list_results, var_col, var_name, bind = FALSE)`
+
+```{r}
+#| label: longitudinal-combine-just-pval-table
 
 # Combines p-value outputs for different timepoints in a single table
   #> list_results: fit_permanova() output for each timepoint collected in a list
@@ -1020,7 +1444,7 @@ corr_fdr <- function(dat, method = "spearman", p.adjust.method = "fdr",
   #> time_name: manually set the name of timepoints
   #> bind: if no key variable for joining exists, use bind = TRUE to bind columns instead of joining
 
-combine_table <- function(list_results, var_col, var_name,
+combine_pval_table <- function(list_results, var_col, var_name,
                           time_name = NULL, bind = FALSE){
   
   # if time names are not specified use indices 0-n

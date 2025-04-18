@@ -352,10 +352,10 @@ display: none;
 </div>
 
 
-<div id="rct-microbiome-analysis" class="section level1">
-<h1>RCT microbiome analysis</h1>
+<div id="rct-amr-and-microbiome-analysis" class="section level1">
+<h1>RCT AMR and microbiome analysis</h1>
 <p>Collected function documentation for comparing differences in
-microbiomes and resistomes of treatment arms. Example code uses
+microbiomes and resistomes between treatment arms. Example code uses
 simulated count data. All scripts include commented functions with
 documentation.</p>
 <p><br></p>
@@ -418,7 +418,7 @@ variable</li>
 table with the log2foldchange, foldchange, standard error, and p-value
 for each level of the dependent variable.</p>
 <p><strong>Usage</strong></p>
-<p><code>display_deseq_results(mod, vars, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)</code></p>
+<p><code>display_deseq_results(mod, vars = NULL, var_label = NULL, digits = NULL, p.adjust.method = NULL, na.rm = FALSE)</code></p>
 <p><strong>Arguments</strong></p>
 <p>mod</p>
 <ul>
@@ -427,7 +427,8 @@ for each level of the dependent variable.</p>
 </ul>
 <p>vars</p>
 <ul>
-<li>The names of which variables to include in the output table</li>
+<li>Optional vector with the names of which variables to include in the
+output table. For visualization purposes only.</li>
 </ul>
 <p>var_label</p>
 <ul>
@@ -459,7 +460,7 @@ for each variable level (class, gene, etc..) with results for each
 variable. Used to output DESeq2 results for each variable in a design
 formula with multiple independent variables.</p>
 <p><strong>Usage</strong></p>
-<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type = &quot;custom&quot;, vars, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, var_label = NULL, digits = NULL)</code></p>
+<p><code>fit_deseq2(dat, stop_col, formulas, alpha = 0.05, test = &quot;Wald&quot;, sf_type = &quot;custom&quot;, total_counts = NULL, ordered = FALSE, reduced = NULL, na.rm = FALSE, p.adjust.method = NULL, vars = NULL, var_label = NULL, digits = NULL)</code></p>
 <p><strong>Arguments</strong></p>
 <p>Same arguments from <code>do_deseq()</code> and
 <code>display_deseq_results()</code>.</p>
@@ -468,8 +469,7 @@ formula with multiple independent variables.</p>
 <li><p>a list of formulas to iterate through. DESeq2 returns results for
 the final variable in the formula. Must input formulas with condition of
 interest in the final position for each independent variable.</p></li>
-<li><p>formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3
-+ x1))</p></li>
+<li><p><code>formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))</code></p></li>
 </ul>
 <p>p.adjust.method</p>
 <ul>
@@ -478,9 +478,179 @@ interest in the final position for each independent variable.</p></li>
 <p><br></p>
 </div>
 </div>
+<div id="t-tests" class="section level1">
+<h1>T-Tests</h1>
+<div id="description-3" class="section level3">
+<h3>Description</h3>
+<p>Pairwise comparison of treatment arms. Option to log2 transform reads
+per million with <span class="math inline">\(Log_2(rM + {\frac{1}{total
+reads}} \cdot 1,000,000)\)</span></p>
+<p><strong>Usage</strong></p>
+<p><code>ttest_log2rm(dat, group_col, tot_reads_col, start_col, time_col, list = FALSE, log2 = TRUE)</code></p>
+<p><strong>Arguments</strong></p>
+<p>dat</p>
+<ul>
+<li>dataset with counts. All meta-data must precede count columns</li>
+</ul>
+<p>start_col</p>
+<ul>
+<li>the index of first column with counts</li>
+</ul>
+<p>group_col</p>
+<ul>
+<li>index of grouping column (tx)</li>
+</ul>
+<p>total_reads_col</p>
+<ul>
+<li>column with total non-human read numbers for log transforming</li>
+</ul>
+<p>time_col</p>
+<ul>
+<li>time (longitudinal) or measurment month/year</li>
+</ul>
+<p>log2</p>
+<ul>
+<li>should the data be log2 transformed?</li>
+</ul>
+<p>list</p>
+<ul>
+<li>list = TRUE will return results in list format</li>
+<li>list = FALSE will return results as a single table</li>
+</ul>
+<p><br></p>
+</div>
+<div id="description-4" class="section level3">
+<h3>Description</h3>
+<p>Pairwise comparison of treatment arms with permutation based
+Westfall-Young Min-P adjustment for multiple comparisons. Wrapping
+function that calls <code>ttest_log2rm()</code>. Option to log2
+transform reads per million with <span class="math inline">\(Log_2(rM +
+{\frac{1}{total reads}} \cdot 1,000,000)\)</span></p>
+<p><strong>Usage</strong></p>
+<p><code>ttest_min_p(dat, B = 999, group_col, tot_reads_col, start_col, time_col, list = FALSE, log2 = TRUE)</code></p>
+<p><strong>Arguments</strong></p>
+<p>dat</p>
+<ul>
+<li>dataset with counts. All meta-data must precede count columns</li>
+</ul>
+<p>B</p>
+<ul>
+<li>number of permutations. Default is 9999</li>
+</ul>
+<p>start_col</p>
+<ul>
+<li>the index of first column with counts</li>
+</ul>
+<p>group_col</p>
+<ul>
+<li>index of grouping column (tx)</li>
+</ul>
+<p>total_reads_col</p>
+<ul>
+<li>column with total non-human read numbers for log transforming</li>
+</ul>
+<p>time_col</p>
+<ul>
+<li>time (longitudinal) or measurment month/year</li>
+</ul>
+<p>log2</p>
+<ul>
+<li>should the data be log2 transformed</li>
+</ul>
+<p>list</p>
+<ul>
+<li>list = TRUE will return results in list format</li>
+<li>list = FALSE will return results as a single table</li>
+</ul>
+<p><br></p>
+</div>
+</div>
+<div id="wilcoxon-rank-sum" class="section level1">
+<h1>Wilcoxon Rank Sum</h1>
+<div id="description-5" class="section level3">
+<h3>Description</h3>
+<p>Wilcoxon rank sum test at a single time.</p>
+<p><strong>Usage</strong></p>
+<p><code>rank_sum(dat)</code></p>
+<p><strong>Arguments</strong></p>
+<p>dat</p>
+<ul>
+<li>dataset with just rM or counts and grouping variable (treatment
+arm)</li>
+<li>grouping variable must be in 1st column, followed by count
+columns</li>
+</ul>
+<p><br></p>
+</div>
+<div id="description-6" class="section level3">
+<h3>Description</h3>
+<p>Wilcoxon rank sum test for all timepoints in a study. Returns results
+for all classes in each timepoint in a single table</p>
+<p><strong>Usage</strong></p>
+<p><code>rank_sum_longitudinal(dat, time_col, group_col, start_col)</code></p>
+<p><strong>Arguments</strong></p>
+<p>dat</p>
+<ul>
+<li>dataset with counts. All meta-data must precede count columns</li>
+</ul>
+<p>start_col</p>
+<ul>
+<li>the index of first column with counts</li>
+</ul>
+<p>group_col</p>
+<ul>
+<li>index of grouping column (tx)</li>
+</ul>
+<p>total_reads_col</p>
+<ul>
+<li>column with total non-human read numbers for log transforming</li>
+</ul>
+<p>time_col</p>
+<ul>
+<li>time (longitudinal) or measurment month/year.</li>
+</ul>
+<p><br></p>
+</div>
+<div id="description-7" class="section level3">
+<h3>Description</h3>
+<p>Wilcoxon rank sum test for all timepoints in a study with
+Westfall-Young Min-p adjustment for multiple comparisons. Calls
+<code>rank_sum_longitudinal()</code></p>
+<p><strong>Usage</strong></p>
+<p><code>rank_sum_longitudinal(dat, time_col, group_col, start_col)</code></p>
+<p><strong>Arguments</strong></p>
+<p>dat</p>
+<ul>
+<li>dataset with counts. All meta-data must precede count columns</li>
+</ul>
+<p>B</p>
+<ul>
+<li>number of permutations</li>
+</ul>
+<p>start_col</p>
+<ul>
+<li>the index of first column with counts</li>
+</ul>
+<p>group_col</p>
+<ul>
+<li>index of grouping column (tx)</li>
+</ul>
+<p>total_reads_col</p>
+<ul>
+<li>column with total non-human read numbers for log transforming</li>
+</ul>
+<p>time_col</p>
+<ul>
+<li>time (longitudinal) or measurment month/year. If the study is not
+longitudinal, use seperate datasets for pre and post intervention
+min-p</li>
+</ul>
+<p><br></p>
+</div>
+</div>
 <div id="diversity" class="section level1">
 <h1>Diversity</h1>
-<div id="description-3" class="section level3">
+<div id="description-8" class="section level3">
 <h3>Description</h3>
 <p><span class="math display">\[L_{\alpha} = \left( \sum^n_{i \ = \ 1}
 P_i^{\ \ \alpha} \right) ^{\frac{1}{1 \ - \ \alpha}}\]</span></p>
@@ -502,7 +672,7 @@ simpson.</p>
 </ul>
 <p><br></p>
 </div>
-<div id="description-4" class="section level3">
+<div id="description-9" class="section level3">
 <h3>Description</h3>
 <p>Calculate all diversity indices simultaneously. Output table with
 treatment arm, shannon, simpson’s index, and inverse simpson.</p>
@@ -520,7 +690,7 @@ start</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-5" class="section level3">
+<div id="description-10" class="section level3">
 <h3>Description</h3>
 <p>Plot diversity values from <code>calc_diversity()</code> output,
 requires <code>patchwork</code> loaded.</p>
@@ -554,7 +724,7 @@ months”..)</li>
 </div>
 <div id="permanova" class="section level1">
 <h1>PERMANOVA</h1>
-<div id="description-6" class="section level3">
+<div id="description-11" class="section level3">
 <h3>Description</h3>
 <p>Combines runs PERMANOVA, comparing groups at a single timepoint.</p>
 <p><strong>Usage</strong></p>
@@ -582,7 +752,7 @@ columns</li>
 </div>
 <div id="pcoa" class="section level1">
 <h1>PCoA</h1>
-<div id="description-7" class="section level3">
+<div id="description-12" class="section level3">
 <h3>Description</h3>
 <p>Function returning Eigenvectors, Eigenvalues, and Centroids from
 PCoA.</p>
@@ -604,7 +774,7 @@ columns</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-8" class="section level3">
+<div id="description-13" class="section level3">
 <h3>Description</h3>
 <p>Plot Centroids from PCoA1 and PCoA2.</p>
 <p><strong>Usage</strong></p>
@@ -639,7 +809,7 @@ columns</li>
 </div>
 <div id="correlation" class="section level1">
 <h1>Correlation</h1>
-<div id="description-9" class="section level3">
+<div id="description-14" class="section level3">
 <h3>Description</h3>
 <p>Test for correlation/association between paired samples and correct
 for multiple comparisons. Returns correlation coeffiecents, p-values,
@@ -682,12 +852,25 @@ desired</li>
 </div>
 <div id="longitudinal-results" class="section level1">
 <h1>Longitudinal Results</h1>
-<div id="description-10" class="section level3">
+<div id="description-15" class="section level3">
+<h3>Description</h3>
+<p>Combine all output values from different timepoints into a single
+table.</p>
+<p><strong>Usage</strong></p>
+<p><code>combine_table(list_results, var_col, var_name, bind = FALSE)</code></p>
+<p><strong>Arguments</strong></p>
+<p>grp_name</p>
+<ul>
+<li>The name of the test group to pull out (for example, “MLS”)</li>
+</ul>
+<p><br></p>
+</div>
+<div id="description-16" class="section level3">
 <h3>Description</h3>
 <p>Combine p-value outputs for different timepoints in a single
 table.</p>
 <p><strong>Usage</strong></p>
-<p><code>combine_table(list_results, var_col, var_name, bind = FALSE)</code></p>
+<p><code>combine_pval_table(list_results, var_col, var_name, bind = FALSE)</code></p>
 <p><strong>Arguments</strong></p>
 <p>list_results</p>
 <ul>
@@ -716,7 +899,7 @@ columns instead of joining</li>
 </ul>
 <p><br></p>
 </div>
-<div id="description-11" class="section level3">
+<div id="description-17" class="section level3">
 <h3>Description</h3>
 <p>Plot a 3D scatterplot for visualizing time centroids on 3 principal
 components.</p>
