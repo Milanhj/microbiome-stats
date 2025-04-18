@@ -9,6 +9,40 @@ library(plotly)
 # Table Function ---------------------------------------------------------------
 
 
+# Combines all outputs for different timepoints into a single table
+  #> Use this function over combine_pval_table()
+  #> grp_name: the name of the test group to pull out (i.e. "MLS")
+combine_result_table <- function(list_results, grp_name){
+  
+  # Rename first column something generic
+  colnames(list_results[[1]])[1] <- "var"
+  
+  tib_base <- list_results[[1]] %>% 
+    filter(var == grp_name) %>% 
+    mutate(timepoint = 0) %>% 
+    relocate(timepoint, .after = "var")
+  
+  
+  for (i in 2:length(list_results)){
+    
+    # Rename first column something generic
+    colnames(list_results[[i]])[1] <- "var"
+    
+    tib_time_i <- list_results[[i]] %>% 
+      filter(var == grp_name) %>% 
+      mutate(timepoint = i-1) %>% 
+      relocate(timepoint, .after = "var")
+    
+    tib_base <- rbind(tib_base, tib_time_i)
+    
+  } # end for
+  
+  return(tib_base)
+  
+} # end function
+
+
+
 # Combines p-value outputs for different timepoints in a single table
   #> list_results: fit_permanova() output for each timepoint collected in a list
   #> var_col: the column of the result variable to be represented (e.g. column with `padj`, etc)
@@ -16,7 +50,7 @@ library(plotly)
   #> time_name: manually set the name of timepoints
   #> bind: if no key variable for joining exists, use bind = TRUE to bind columns instead of joining
 
-combine_table <- function(list_results, var_col, var_name,
+combine_pval_table <- function(list_results, var_col, var_name,
                           time_name = NULL, bind = FALSE){
   
   # if time names are not specified use indices 0-n
@@ -89,9 +123,6 @@ combine_table <- function(list_results, var_col, var_name,
   return(tib_full)
   
 } # end function
-
-
-
 
 
 # Plot 3D Function -------------------------------------------------------------
