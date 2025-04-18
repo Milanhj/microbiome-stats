@@ -10,7 +10,8 @@ library(patchwork)
 
 
 # Simulated count data
-counts <- read_rds("data/simulated_counts.rds")
+counts <- read_rds("01_data/simulated_counts.rds") %>% 
+  relocate(group, .after = "total_reads")
 
 
 
@@ -171,8 +172,8 @@ plot_pcoa <- function(vectors, centroids, label, colors = NULL,
 
 
 # Calculate centroids and eigenvectors
-l1_pcoa <- pcoa(counts, start_col = 4, "l1")
-l2_pcoa <- pcoa(counts, start_col = 4, "l2")
+l1_pcoa <- pcoa(counts, start_col = 5, "l1")
+l2_pcoa <- pcoa(counts, start_col = 5, "l2")
 
 
 # Plot centroids L1

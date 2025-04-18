@@ -11,7 +11,8 @@ library(patchwork)
 
 
 # Simulated count data
-counts <- read_rds("data/simulated_counts.rds")
+counts <- read_rds("01_data/simulated_counts.rds") %>% 
+  relocate(group, .after = "total_reads")
 
 
 # Functions --------------------------------------------------------------------
@@ -192,7 +193,7 @@ plot_diversity <- function(dat, xlim, timepoint, groups, colors){
 # Workflow ---------------------------------------------------------------------
 
 # Calculate diversity for each ID
-div_out <- calc_diversity(counts, start_col = 4)
+div_out <- calc_diversity(counts, start_col = 5)
 
 
 

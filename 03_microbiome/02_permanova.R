@@ -9,7 +9,8 @@ library(vegan)
 
 
 # Simulated count data
-counts <- read_rds("data/simulated_counts.rds")
+counts <- read_rds("01_data/simulated_counts.rds") %>% 
+  relocate(group, .after = "total_reads")
 
 
 # Functions --------------------------------------------------------------------
