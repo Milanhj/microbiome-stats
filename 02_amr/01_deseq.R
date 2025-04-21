@@ -337,11 +337,19 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
       p.adjust.method = p.adjust.method, na.rm = na.rm
     )
     formula_outs[[i]] <- out
-    
     # Add the name of the variable to the list
-    covs <- str_split_1(
-      as.character(formulas[[i]]), pattern = "[\\s]*\\+[\\s]*"
-    )
+    if (length(formulas) == 1){
+      # Pattern for splitting a formula with just 1 covariate
+      covs <- str_split_i(
+        as.character(formulas[[i]]), pattern = "~", 2
+      )
+    } else{
+      # Pattern for splitting a formula with 2+ covariates
+      covs <- str_split_1(
+        as.character(formulas[[i]]), pattern = "[\\s]*\\+[\\s]*"
+      )
+    }
+    
     names(formula_outs)[[i]] <- covs[[length(covs)]]
   } # end for i
   
