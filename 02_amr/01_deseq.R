@@ -424,6 +424,18 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 
 ## just tx  -------------------------------------------------
 
+# Wrapped function
+out_fit_deseq <- fit_deseq2(counts, stop_col = 4, formulas = list(c(~group)),
+                            sf_type = "custom", 
+                            total_counts = counts$total_reads,
+                            vars = count_col_names, var_label = "x",
+                            p.adjust.method = "holm", list = FALSE,
+                            alpha = 0.05, test = "Wald",
+                            ordered = FALSE, reduced = NULL, na.rm = FALSE,
+                            digits = NULL)
+
+out_fit_deseq
+
 
 ### custom offset --------------------------
 
