@@ -315,7 +315,6 @@ display_deseq_results <- function(mod, vars = NULL, var_label = NULL, digits = N
 
 # fit_deseq2(): do_deseq and display_deseq_results wrapped together
 # outputs a list of tables for each variable level (gene) with results for each independent variable 
-# Use this function to output results for each variable in a design formula with multiple independent variables
 fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
                        sf_type = "custom", total_counts = NULL, 
                        p.adjust.method = NULL, list = TRUE,
@@ -416,7 +415,226 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 } # end function
 
 
-
+# fit_deseq2() with a permutation loop for westfall-young min-p
+# B: number of permutations for minP
+# tot_counts_col: column index with total counts
+# select_var: option to run min-p on a single drug class name
+# sep_time: set to true if you're doing parwise comparison at different timepoints
+  # formula = ~ tx: sep_time = TRUE
+  # formula = ~ tx + time: sep_time = FALSE
+# Function renames grouping column tx
+# need total counts col
+deseq2_min_p <- function(dat, B = 999, stop_col, tot_counts_col, time_col = NULL,
+                         formulas, alpha = 0.05, test = "Wald", group_col,
+                         sf_type = "custom", sep_time = TRUE, select_var = NULL,
+                         ordered = FALSE, reduced = NULL, digits = NULL){
+  
+  # If just one variable is getting min-p-ed, must be ran at sep times
+  if (!is.null(select_var)) sep_time <- TRUE
+  # Throw a warning message if time column is null
+  if (!is.null(select_var) & is.null(time_col)){
+    message("Must input a time column index when running min-P on a single variable.")
+  }
+  
+  # Names of the classes
+  rM_names <- colnames(dat)[(stop_col+1):ncol(dat)]
+  # Rename group column (permutation column) "tx"
+  colnames(dat)[group_col] <- "tx"
+  # Deal with the outcome variable, give it a generic name
+  var_label <- "outcome_var"
+  
+  if (sep_time){ # Run timepoints individually
+    
+    # Sort and store timepoints
+    times <- sort(as.numeric(unique(as.vector(unlist(dat[,time_col])))))
+    # Make sure time column is named timepoint
+    colnames(dat)[time_col] <- "timepoint"
+    
+    # Initialize a tibble to store all results from DESeq2
+    all_observed_result <- tibble(
+      timepoint = NA, var = NA, outcome_var = NA, 
+      log2foldchange = NA, foldchange = NA, lfcSE = NA, 
+      p_value = NA
+    )
+    # Vector to store all observed minimun p-values from timepoints
+    observed_pvals_all <- c()
+    # Vector to store all minimun p-values from all permutations for all timepoints
+    min_perm_pvals_all <- c()
+    for (t in 1:length(times)){
+      
+      # Filter for that timepoint data
+      dat_t <- dat %>% 
+        filter(timepoint == times[t]) # t
+      
+      # Call function to compute observed p-values
+      observed_result_table <- fit_deseq2(
+        dat_t, stop_col = stop_col, formulas = formulas, alpha = alpha,
+        test = test, sf_type = "custom", 
+        total_counts = dat_t[[tot_counts_col]],
+        var_label = var_label, digits = digits,
+        p.adjust.method = NULL, list = FALSE, reduced = reduced,
+        ordered = ordered,  na.rm = FALSE
+      ) %>% 
+        # Time variable
+        mutate(timepoint = rep(times[t], length(rM_names))) %>% 
+        relocate(timepoint)
+      
+      # Either filter for a single class or use results for all
+      if (!is.null(select_var)){ # Single rM name
+        
+        # Filter results for just a single class
+        limited_observed_result <- observed_result_table %>%
+          filter(outcome_var == select_var)
+        # Append observed p-values from time t to the combined vectoe
+        observed_pvals_all[t] <- limited_observed_result$p_value
+        # Bind observed result to combined results table
+        all_observed_result <- rbind(all_observed_result, limited_observed_result)
+        
+      } else{ # All rM names
+        
+        # Append observed p-values from time t to the combined vectoe
+        observed_pvals_all <- append(observed_pvals_all, observed_result_table$p_value)
+        # Bind observed result to combined results table
+        all_observed_result <- rbind(all_observed_result, observed_result_table)
+      }
+      
+      # Remove the NA row used to create tibble
+      if (t == 1){
+        all_observed_result <- all_observed_result[-1,]
+      } 
+      
+      # Storage for permuted minimum P-values for time t 
+      min_perm_pvals_t <- c()
+      for (b in 1:B) { # Permutation loop
+        
+        # Sample IDs without replacement
+        perm_dat_t <- dat_t %>% 
+          mutate(tx = sample(tx, length(tx), replace = FALSE))
+        
+        # Compute p-values from permuted data, same procedure as for observed
+        perm_p_result <- fit_deseq2(
+          perm_dat_t, stop_col = stop_col, formulas = formulas, alpha = alpha,
+          test = test, sf_type = "custom", 
+          total_counts = perm_dat_t[[tot_counts_col]],
+          var_label = var_label, digits = digits,
+          p.adjust.method = NULL, list = FALSE, reduced = reduced,
+          ordered = ordered,  na.rm = FALSE
+        )
+        # Either filter for a single class or use results for all
+        if (!is.null(select_var)){ # Single rM name
+          
+          # Select just a single class
+          limited_perm_result <- perm_p_result %>%
+            filter(outcome_var == select_var)
+          # Store the p-value
+          min_perm_pvals_t[b] <- limited_perm_result$p_value
+          
+        } else{ # All rM names
+          # Record minimum P-value from vector of permuted p-values
+          min_perm_pvals_t[b] <- min(perm_p_result$p_value, na.rm = TRUE)
+        }
+      } # for b
+      
+      # Append the permuted minPs to the vector will minP for all times
+      min_perm_pvals_all <- append(min_perm_pvals_all, min_perm_pvals_t)
+      
+    } # for t
+    
+    # Build table for holding adjusted p-values
+    if (!is.null(select_var)){ # For just a single variable
+      m_padj <- tibble(
+        timepoint = times,
+        outcome_var = rep(select_var, length(times)),
+        minp_adj = rep(0)
+      )
+    } else{ # For all variables
+      
+      # Build a vector of times for result table
+      time_var <- c()
+      for (p in 1:length(times)){
+        time_var <- append(time_var, rep(times[p], length(rM_names)))
+      } # for p
+      # Build table for holding adjust P-values for all rM names
+      m_padj <- tibble(
+        timepoint = time_var,
+        outcome_var = rep(rM_names, length(times)),
+        minp_adj = rep(0)
+      )
+    }
+    # Adjust p-values
+    for (i in 1:length(observed_pvals_all)) {
+      # Proportion of permuted min p values less than or equal to the observed p-value i
+      m_padj[i,3] <- mean(min_perm_pvals_all <= observed_pvals_all[i])
+      
+    } # for i
+    
+    # Format results
+    padj_result <- all_observed_result %>% 
+      left_join(m_padj, by = c("outcome_var", "timepoint")) %>% 
+      mutate(SE = 2^lfcSE) %>% 
+      relocate(SE, .after = "lfcSE")
+    
+    return(padj_result)
+    
+  } else { # If don't need to calculate for separate timepoints
+    
+    # Call function to compute observed pvalues
+    observed_result_table <- fit_deseq2(
+      dat, stop_col = stop_col, formulas = formulas, alpha = alpha,
+      test = test, sf_type = "custom", 
+      total_counts = dat[[tot_counts_col]],
+      var_label = var_label, digits = digits,
+      p.adjust.method = NULL, list = FALSE, reduced = reduced,
+      ordered = ordered,  na.rm = FALSE
+    )
+    
+    # Store P-values
+    observed_p_values <- observed_result_table$p_value
+    
+    # Storage for permuted minimum P-values (numeric vector)
+    min_perm_p_values <- c()
+    for (b in 1:B) { # Permutation loop
+      
+      # Sample IDs without replacement
+      perm_dat <- dat %>% 
+        mutate(tx = sample(tx, length(tx), replace = FALSE))
+      
+      # Compute p-values from permuted data, same procedure as for observed
+      perm_p_result <- fit_deseq2(
+        perm_dat, stop_col = stop_col, formulas = formulas, alpha = alpha,
+        test = test, sf_type = "custom", 
+        total_counts = perm_dat[[tot_counts_col]],
+        var_label = var_label, digits = digits,
+        p.adjust.method = NULL, list = FALSE, reduced = reduced,
+        ordered = ordered,  na.rm = FALSE
+      )
+      
+      # Record minimum P-value from vector of permuted p-values
+      min_perm_p_values[b] <- min(perm_p_result$p_value, na.rm = TRUE)
+    } # for b
+    
+    # Build table to store adjusted P-values
+    m_padj <- tibble(
+      var = observed_result_table$var,
+      outcome_var = observed_result_table$outcome_var,
+      minp_adj = rep(0))
+    
+    for (i in 1:length(observed_p_values)) {
+      # Proportion of permuted min p values less than or equal to the observed p-value i
+      m_padj[i,3] <- mean(min_perm_p_values <= observed_p_values[i])
+      
+    } # for i
+    
+    deseq_padj_res <- observed_result_table %>%
+      left_join(m_padj, by = c("var", "outcome_var")) %>% 
+      mutate(SE = 2^lfcSE) %>% 
+      relocate(SE, .after = "lfcSE")
+    
+    return(deseq_padj_res)
+    
+  } # end else (sep_time == FALSE)
+  
+} # end function
 
 
 # Treatment Wald --------------------------------------------------------------
@@ -548,5 +766,24 @@ result_LRT <- display_deseq_results(
 result_LRT
 
 
+
+
+# Min-P ------------------------------------------------------------------------
+
+
+# For all variables
+out_minp <- deseq2_min_p(counts, B = 5, formulas = list(c(~tx)),
+                         stop_col = 4, group_col = 3, tot_counts_col = 4,
+                         time_col = NULL, sf_type = "custom", alpha = 0.05,
+                         test = "Wald", sep_time = FALSE)
+
+
+# For a single x variable
+out_minp_x1 <- deseq2_min_p(counts, B = 5, formulas = list(c(~tx)), 
+                            select_var = "x1", stop_col = 4, group_col = 3,
+                            tot_counts_col = 4, time_col = 2, 
+                            sf_type = "custom", alpha = 0.05,
+                            test = "Wald", sep_time = TRUE
+                            )
 
 

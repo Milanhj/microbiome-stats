@@ -103,7 +103,7 @@ na.rm
 
 Function wrapping `do_deseq()` and `display_deseq_results()` together.
 Outputs a list of tables for each variable level (class, gene, etc..) with results for each variable. 
-Used to output DESeq2 results for each variable in a design formula with multiple independent variables.
+Used to output DESeq2 results for each variable in a design formula with one or more independent variables.
 
 
 **Usage**
@@ -121,6 +121,7 @@ DESeq2 returns results for the final variable in the formula.
 Must input formulas with condition of interest in the final position for each independent variable.
 
 - `formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))`
+- `formulas = list(c(~x1)`
 
 
 p.adjust.method
@@ -130,6 +131,60 @@ p.adjust.method
 
 <br>
 
+### Description
+
+Function uses `fit_deseq2()` and a permutation loop to return
+Westfall-Young minP adjusted p-values for all classes or a single class.
+
+
+**Usage**
+
+`deseq2_min_p(dat, B = 999, stop_col, formulas, tot_counts_col, time_col = NULL, alpha = 0.05, test = "Wald", sf_type = "custom", sep_time = TRUE, select_var = NULL, ordered = FALSE, reduced = NULL, digits = NULL)`
+
+**Arguments**
+
+Same arguments from `do_deseq()` and `display_deseq_results()`.
+
+
+B
+
+- number of permutations
+
+stop_col
+
+- index of final column of metadata
+
+tot_reads_col 
+
+- column index with total reads for computing size factors
+
+group_col 
+
+- permutation column index. will be renamed `tx`
+
+select_var
+
+- option to run min-p on a single drug class name (select_var = "MLS")
+- must input a time column index when running min-P on a single variable, 
+because min-p must be run at separate timepoints
+
+sep_time
+
+- option to obtain results for separate timepoints, but run all p-values through a single min-p procedure
+- if sep_time = TRUE, you must provide the index for the time variable `time_col`
+- If the model has a longitudinal component (i.e. ~ tx + time), sep_time = FALSE
+
+
+formulas
+
+- a list of formulas to iterate through. 
+DESeq2 returns results for the final variable in the formula. 
+Must input formulas with condition of interest in the final position for each independent variable.
+
+- `formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))`
+- `formulas = list(c(~x1)`
+
+<br>
 
 # T-Tests
 
