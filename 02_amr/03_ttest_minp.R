@@ -65,7 +65,7 @@ ttest_log2rm <- function(dat, group_col, tot_reads_col, start_col, time_col,
       dplyr::rename(untrans = !!sym(rm_names[i]))
     
     # Store vector of times for class i
-    times <- sort(unique(dat_log2$timepoint))
+    times <- sort(unique(as.character(dat_log2$timepoint)))
     
     # Create a matrix to hold t-test results for each timepoint
     mttest <- matrix(ncol = 3, nrow = length(times),
