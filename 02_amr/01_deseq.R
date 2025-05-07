@@ -216,6 +216,7 @@ do_deseq <- function(dat, stop_col, formula, alpha = 0.05, test = "Wald",
   
 } # End function
 
+
 # Display DESeq output in a cleaner, more easy to work with way
   #> mod: model output from my do_deseq() function or package results(DESeq())
   #> vars: the names of which variables to include in the output table
@@ -415,15 +416,15 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 } # end function
 
 
-# fit_deseq2() with a permutation loop for westfall-young min-p
-# B: number of permutations for minP
-# tot_counts_col: column index with total counts
-# select_var: option to run min-p on a single drug class name
-# sep_time: set to true if you're doing parwise comparison at different timepoints
-  # formula = ~ tx: sep_time = TRUE
-  # formula = ~ tx + time: sep_time = FALSE
-# Function renames grouping column tx
-# need total counts col
+# For non-longitudinal data:
+  # fit_deseq2() with a permutation loop for westfall-young min-p
+  # B: number of permutations for minP
+  # tot_counts_col: column index with total counts
+  # select_var: option to run min-p on a single drug class name
+  # sep_time: set to true if you're doing parwise comparison at different timepoints
+  # Function renames grouping column tx
+  # need total counts col
+
 deseq2_min_p <- function(dat, B = 999, stop_col, tot_counts_col, time_col = NULL,
                          formulas, alpha = 0.05, test = "Wald", group_col,
                          sf_type = "custom", sep_time = TRUE, select_var = NULL,
@@ -637,6 +638,256 @@ deseq2_min_p <- function(dat, B = 999, stop_col, tot_counts_col, time_col = NULL
 } # end function
 
 
+
+
+# For longitudinal data:
+  # fit_deseq2() with a permutation loop for westfall-young min-p
+  # B: number of permutations for minP
+  # stop_col: final column index of metadata (before counts start)
+  # tot_counts_col: column index with total counts
+  # group_col: column index of grouping variable
+    # Function renames grouping column tx
+  # select_vars: vector of variables to run through min-p procedure separately
+    # All other columns will be done together
+  # thresh: threshold for proportion of non-zero values needed for removing a count column
+
+minp_deseq2_longitudinal <- function(
+    dat, B = 999, formulas, stop_col, tot_counts_col, time_col,
+    group_col, alpha = 0.05, test = "Wald", select_vars = NULL, thresh = NULL,
+    ordered = FALSE, reduced = NULL, digits = NULL){
+  
+  # Names of the genera, with selected variables removed
+  rM_names <- colnames(dat)[(stop_col+1):ncol(dat)]
+  rM_names <- rM_names[!(rM_names %in% select_vars)]
+  
+  # Sort and store timepoints
+  times <- sort(as.numeric(unique(as.vector(unlist(dat[,time_col])))))
+  
+  # Make sure time column is named timepoint
+  colnames(dat)[time_col] <- "timepoint"
+  # Rename group column (permutation column) "tx"
+  colnames(dat)[group_col] <- "tx"
+  # Deal with the outcome variable, give it a generic name
+  var_label <- "outcome_var"
+  
+  # Initialize a tibble to store all observed results from DESeq2
+  # End in a table with a row for each timepoint
+  all_observed_result <- tibble(
+    timepoint = NA, var = NA, outcome_var = NA, 
+    log2foldchange = NA, foldchange = NA, lfcSE = NA, 
+    p_value = NA
+  )
+  
+  ## 1) Observed
+  
+  # List to store the names of genera at each timepoint for building result table
+  togther_group_names <- vector("list", length = length(times))
+  # List to store timepoints for building result table
+  togther_group_times <- vector("list", length = length(times))
+  
+  # List to store all observed minimun p-values from timepoints
+  # Length of the number of select variables, plut one for the remaining genera 
+  observed_pvals <- vector("list", length = length(select_vars)+1)
+  names(observed_pvals) <- append(select_vars, "others")
+  
+  # Time loop for observed result
+  for (t in 1:length(times)){
+    
+    # Filter for that timepoint data
+    dat_t <- dat %>% 
+      filter(timepoint == times[t]) # t
+    
+    # Remove sparse columns before running DESeq2
+    if (!is.null(thresh)){
+      dat_t <- remove_sparse_cols(
+        dat_t, start_col = stop_col+1, thresh = thresh, 
+        keep_vars = select_vars
+      ) #select_vars
+    }
+    
+    # Call function to compute observed p-values
+    observed_result_table <- fit_deseq2(
+      dat_t, stop_col = stop_col, formulas = formulas, alpha = alpha,
+      test = test, sf_type = "custom", 
+      total_counts = dat_t[[tot_counts_col]],
+      var_label = var_label, digits = digits,
+      p.adjust.method = NULL, list = FALSE, reduced = reduced,
+      ordered = ordered,  na.rm = FALSE
+    ) %>% 
+      # Time variable
+      mutate(timepoint = times[t]) %>% 
+      #mutate(timepoint = rep(times[t], length(rM_names))) %>% 
+      relocate(timepoint) #
+    
+    # Store names and times
+    togther_group_names[[t]] <- 
+      observed_result_table$outcome_var[!(observed_result_table$outcome_var
+                                          %in% select_vars)]
+    togther_group_times[[t]] <- rep(times[t], length(togther_group_names[[t]]))
+    
+    # Other genera: append observed p-values from time t to the combined vector
+    observed_pvals[[length(observed_pvals)]] <- append(
+      # Append result list in final position of observed p
+      observed_pvals[[length(observed_pvals)]],
+      # Extract p-values
+      as.vector(unlist(
+        observed_result_table %>% 
+          filter(!(outcome_var %in% select_vars)) %>% 
+          select(p_value)
+      ))
+    )
+    
+    if (!is.null(select_vars)){
+      # Observed p-values for all select variables
+      for (v in 1:length(select_vars)){
+        observed_pvals[[v]][t] <- as.vector(unlist(
+          observed_result_table %>% 
+            filter(outcome_var == select_vars[v]) %>% #
+            select(p_value)
+        ))
+      } # end for v
+    }
+    
+    # Bind observed result to combined results table
+    all_observed_result <- rbind(all_observed_result, observed_result_table)
+    
+    # remove the NA row used to create tibble
+    if (t == 1){
+      all_observed_result <- all_observed_result[-1,]
+    } 
+  } # for t observed
+  
+  ## 1) Permutation
+  
+  # List to store permuted minimum P-values for the groups of variables
+  min_permutation_pvals <- vector("list", length = length(select_vars)+1)
+  names(min_permutation_pvals) <- append(select_vars, "others")
+  
+  # Permutation loop
+  for (b in 1:B){
+    
+    # List to store all p-values from permutation b for the groups of variables
+    pval_b <- vector("list", length = length(select_vars)+1)
+    names(pval_b) <- append(select_vars, "others")
+    
+    # Time loop for permutation
+    for (tp in 1:length(times)){
+      
+      # The columns removed from the observed data at time t
+      to_remove <- rM_names[!(rM_names %in% togther_group_names[[tp]])]
+      
+      # Filter for that timepoint data
+      # Remove columns removed from that observed timepoint
+      # Sample IDs without replacement
+      perm_dat_t <- dat %>% 
+        filter(timepoint == times[tp]) %>% 
+        select(-all_of(to_remove)) %>% 
+        mutate(tx = sample(tx, length(tx), replace = FALSE)) # t
+      
+      # Compute p-values from permuted data, same procedure as for observed
+      perm_result_t <- fit_deseq2(
+        perm_dat_t, stop_col = stop_col, formulas = formulas, alpha = alpha,
+        test = test, sf_type = "custom", 
+        total_counts = perm_dat_t[[tot_counts_col]],
+        var_label = var_label, digits = digits,
+        p.adjust.method = NULL, list = FALSE, reduced = reduced,
+        ordered = ordered,  na.rm = FALSE
+      ) 
+      
+      # Other genera: append permuted p-values from time t to the combined vector
+      pval_b[[length(pval_b)]] <- append(
+        # Append result list in final position of observed p
+        pval_b[[length(pval_b)]],
+        # Extract p-values
+        as.vector(unlist(
+          perm_result_t %>% 
+            filter(!(outcome_var %in% select_vars)) %>% 
+            select(p_value)
+        ))
+      )
+      
+      if(!is.null(select_vars)) {
+        # Permuted p-values for all select variables
+        for (vp in 1:length(select_vars)){
+          pval_b[[vp]][tp] <- as.vector(unlist(
+            perm_result_t %>% 
+              filter(outcome_var == select_vars[vp]) %>% #
+              select(p_value)
+          ))
+        } # end for vp
+      }
+      
+    } # for tp 
+    
+    # Compute and store minimum p-values for each group in permutation b
+    ## Each p-value represents results from an individual timepoint
+    for(i in 1:length(pval_b)){
+      min_permutation_pvals[[i]][b] <- min(pval_b[[i]], na.rm = TRUE)
+    } # for i
+    
+  } # for b
+  
+  # Make a vector of names and times
+  # Need to do select_vars first, replicate the name for each timepoint
+  # names must remain in the same order as the indices of the observed pvals list (MLS, betalactam, others)
+  var_names <- c()
+  timepoints <- c()
+  # Vector for variable to indicate if it was run independently
+  group <- c()
+  
+  if(!is.null(select_vars)) {
+    # Loop to index for the names run separately 
+    for (s in 1:(length(observed_pvals)-1)){
+      var_names <- append(var_names, rep(names(observed_pvals)[s], length(times)))
+      timepoints <- append(timepoints, times)
+      group <- append(group, rep(
+        str_c("independent", as.character(s)), length(times))
+      )
+    } # for s
+  }
+  
+  # Loop to index for the names run together
+  for (i in 1:length(togther_group_names)){
+    var_names <- append(var_names, togther_group_names[[i]])
+    timepoints <- append(timepoints, togther_group_times[[i]])
+    # Add on "together" for all genera in the group run together
+    group <- append(group, rep("together", length(togther_group_names[[i]])))
+  } # for i
+  
+  # Adjust p-values for each group
+  # Vector for storing all adjusted p-values
+  padj <- c()
+  for (g in 1:length(observed_pvals)){ # for group g
+    for (p in 1:length(observed_pvals[[g]])) { # for observed p-value p
+      
+      # Proportion of permuted min p values less than or equal to the observed p-value i
+      padj <- append(padj,
+                     mean(min_permutation_pvals[[g]] <= observed_pvals[[g]][p])
+      )
+    } # for p
+  } # for g
+  
+  # Build table for adjust P-values result
+  m_padj <- tibble(
+    timepoint = timepoints,
+    outcome_var = var_names,
+    run_group = group,
+    minp_adj = padj
+  )
+  
+  # Join min-p adjusted p-values to the observed results
+  padj_result <- all_observed_result %>% 
+    left_join(m_padj, by = c("outcome_var", "timepoint")) %>% 
+    select(-var) %>% 
+    relocate(run_group, .after = "timepoint")
+  
+  return(padj_result)
+  
+  
+} # end function
+
+
+
 # Treatment Wald --------------------------------------------------------------
 
 
@@ -771,6 +1022,8 @@ result_LRT
 # Min-P ------------------------------------------------------------------------
 
 
+## Cross-sectional --------------------------------------
+
 # For all variables
 out_minp <- deseq2_min_p(counts, B = 5, formulas = list(c(~tx)),
                          stop_col = 4, group_col = 3, tot_counts_col = 4,
@@ -785,5 +1038,24 @@ out_minp_x1 <- deseq2_min_p(counts, B = 5, formulas = list(c(~tx)),
                             sf_type = "custom", alpha = 0.05,
                             test = "Wald", sep_time = TRUE
                             )
+
+
+
+## Longitudinal --------------------------------------
+
+
+minp_deseq2_longitudinal(
+  counts, B = 5, formulas = list(c(~tx)), select_vars = c("x1", "x5"), 
+  stop_col = 4, group_col = 3, tot_counts_col = 4, time_col = 2, alpha = 0.05,
+  test = "Wald", thresh = NULL, 
+  ordered = FALSE, reduced = NULL, digits = NULL)
+
+
+
+
+
+
+
+
 
 
