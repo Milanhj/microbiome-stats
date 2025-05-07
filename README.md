@@ -112,7 +112,12 @@ Used to output DESeq2 results for each variable in a design formula with one or 
 
 **Arguments**
 
-Same arguments from `do_deseq()` and `display_deseq_results()`.
+Requires same arguments from `do_deseq()` and `display_deseq_results()`.
+
+dat
+
+-   Dataset with IDs, metadata for design matrix, and counts of all integer values.
+requires an ID variable in the first column and all meta data before first count column
 
 formulas
 
@@ -143,7 +148,12 @@ Westfall-Young minP adjusted p-values for all classes or a single class.
 
 **Arguments**
 
-Same arguments from `do_deseq()` and `display_deseq_results()`.
+Requires same arguments from `do_deseq()` and `display_deseq_results()`.
+
+dat
+
+-   Dataset with IDs, metadata for design matrix, and counts of all integer values.
+requires an ID variable in the first column and all meta data before first count column
 
 
 B
@@ -185,6 +195,63 @@ Must input formulas with condition of interest in the final position for each in
 - `formulas = list(c(~x1)`
 
 <br>
+
+### Description
+
+Function uses `fit_deseq2()` and a permutation loop to return
+Westfall-Young minP adjusted p-values for all classes. Option to run 
+select classes separate from all others in a longitudinal data set. 
+
+
+**Usage**
+
+`minp_deseq2_longitudinal(dat, B = 999, formulas, stop_col, tot_counts_col, time_col, group_col, alpha = 0.05, test = "Wald", select_vars = NULL, thresh = NULL, ordered = FALSE, reduced = NULL, digits = NULL)`
+
+**Arguments**
+
+Requires same arguments from `do_deseq()` and `display_deseq_results()`.
+
+dat
+
+-   Dataset with IDs, metadata for design matrix, and counts of all integer values.
+requires an ID variable in the first column and all meta data before first count column
+
+formulas
+
+- a list of formulas to iterate through. 
+DESeq2 returns results for the final variable in the formula. 
+Must input formulas with condition of interest in the final position for each independent variable.
+
+- `formulas = list(c(~ x1 + x2 + x3), c(~ x1 + x3 + x2), c(~ x2 + x3 + x1))`
+- `formulas = list(c(~x1)`
+
+B
+
+- number of permutations
+
+stop_col
+
+- index of final column of metadata
+
+tot_reads_col 
+
+- column index with total reads for computing size factors
+
+group_col 
+
+- permutation column index. will be renamed `tx`
+
+select_vars
+
+- option to run seperate min-p on select variables (select_var = c("MLS", "betalactams"))
+
+thresh
+
+- threshold for proportion of non-zero values needed for removing a count column
+
+
+<br>
+
 
 # T-Tests
 
@@ -344,7 +411,7 @@ Calls `rank_sum_longitudinal()`
 
 **Usage**
 
-`rank_sum_longitudinal(dat, time_col, group_col, start_col)`
+`rank_sum_min_p(dat, time_col, group_col, start_col, select_vars = NULL, thresh = NULL,)`
 
 **Arguments**
 
@@ -364,14 +431,21 @@ group_col
 
 - index of grouping column (tx)
 
-total_reads_col 
-
-- column with total non-human read numbers for log transforming
 
 time_col 
 
 - time (longitudinal) or measurment month/year. 
 If the study is not longitudinal, use seperate datasets for pre and post intervention min-p
+
+
+select_vars 
+
+- option to min-p select classes separately, 
+- vector of class (outcome_var) names to analyze independent of the others
+
+thresh
+
+- the threshold for proportion of non-zero values needed to be included in analysis
 
 
 
@@ -463,29 +537,40 @@ colors
 
 ### Description
 
-Combines runs PERMANOVA, comparing groups at a single timepoint.
+Runs PERMANOVA on observed data or principal components from PCoA at all timepoints in a dataset.
 
 **Usage**
 
-`fit_permanova(dat, start_col, mthd, perm = 9999)`
+`pcoa_permanova(dat, count_start_col, group_col, time_col, run_pcoa = TRUE, B = 9999, method, thresh_variance = 0.8)`
 
 **Arguments**
 
 dat
 
--   Count data with time variable and group column preceding count columns
+-   Count data with time and group variables
 
-start_col
+count_start_col
 
 -   First column with counts
 
-mthd
+run_pcoa
+
+- logical input. 
+- if `run_pcoa == TRUE`, PCoA is computed and principal components are used for PERMANOVA 
+- if `run_pcoa == FALSE`, the observed data is used for PERMANOVA
+
+method
 
 -   Distance measure for `vegan::adonis2()`
+-   `"l1"` for manhattan or `"l2"` for euclidean
 
-perm
+B
 
 -   Number of permutations
+
+thresh_variance
+
+- threshold for determining how many principal components to use for PERMANOVA based on percent variance explained
 
 <br>
 
