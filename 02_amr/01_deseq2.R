@@ -17,7 +17,6 @@ counts <- read_rds("01_data/simulated_counts.rds")
 count_col_names <- colnames(counts[,-c(1:3)])
 
 
-
 # Functions --------------------------------------------------------------------
 
 # Raw output from DESeq2 package 
@@ -417,7 +416,7 @@ fit_deseq2 <- function(dat, stop_col, formulas, vars = NULL,
 
 
 # For non-longitudinal data:
-  # fit_deseq2() with a permutation loop for westfall-young min-p
+  # fit_deseq2() with a permutation loop for min-p
   # B: number of permutations for minP
   # tot_counts_col: column index with total counts
   # select_var: option to run min-p on a single drug class name
@@ -888,22 +887,7 @@ minp_deseq2_longitudinal <- function(
 
 
 
-# Treatment Wald --------------------------------------------------------------
-
-
-## just tx  -------------------------------------------------
-
-# Wrapped function
-out_fit_deseq <- fit_deseq2(counts, stop_col = 4, formulas = list(c(~group)),
-                            sf_type = "custom", 
-                            total_counts = counts$total_reads,
-                            vars = count_col_names, var_label = "x",
-                            p.adjust.method = "holm", list = FALSE,
-                            alpha = 0.05, test = "Wald",
-                            ordered = FALSE, reduced = NULL, na.rm = FALSE,
-                            digits = NULL)
-
-out_fit_deseq
+# Wald --------------------------------------------------------------
 
 
 ### custom offset --------------------------
@@ -956,15 +940,31 @@ result_wald_subset
 
 
 
+## fit_deseq2  -------------------------------------------------
+
+
+# Wrapped function
+# fit_deseq2 for a single covariate
+out_fit_deseq2 <- fit_deseq2(counts, stop_col = 4, formulas = list(c(~group)),
+                             sf_type = "custom", 
+                             total_counts = counts$total_reads,
+                             vars = count_col_names, var_label = "x",
+                             p.adjust.method = "holm", list = FALSE,
+                             alpha = 0.05, test = "Wald",
+                             ordered = FALSE, reduced = NULL, na.rm = FALSE,
+                             digits = NULL)
+
+out_fit_deseq2
+
+
+
+
 ## tx and time ------------------------------------------------
 
 
 # Define both formulas 
 formulas <- list(c(~ timepoint + group), c(~ group + timepoint))
 
-
-
-### custom offset -----------------------
 
 
 # Run wrapped function
@@ -980,24 +980,8 @@ result_group_time_csf
 
 
 
-### median ratio ------------------------
 
-
-# Run wrapped function
-result_group_time_mr <- fit_deseq2(dat = counts, stop_col = 4, formulas = formulas, 
-                                alpha = 0.05, test = "Wald", 
-                                sf_type = "median_ratio",
-                                na.rm = FALSE, p.adjust.method = "fdr",
-                                vars = count_col_names, 
-                                var_label = "x", digits = 4
-           )
-result_group_time_mr
-
-
-
-
-
-# Longitudinal LRT -------------------------------------------------------------
+# LRT -------------------------------------------------------------
 
 
 
