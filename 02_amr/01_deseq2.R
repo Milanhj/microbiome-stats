@@ -650,10 +650,48 @@ deseq2_min_p <- function(dat, B = 999, stop_col, tot_counts_col, time_col = NULL
     # All other columns will be done together
   # thresh: threshold for proportion of non-zero values needed for removing a count column
 
+#dat <- counts
 minp_deseq2_longitudinal <- function(
     dat, B = 999, formulas, stop_col, tot_counts_col, time_col,
     group_col, alpha = 0.05, test = "Wald", select_vars = NULL, thresh = NULL,
     ordered = FALSE, reduced = NULL, digits = NULL){
+  
+  # Convenience function to remove the too sparse columns
+  remove_sparse_cols <- function(dat, start_col, keep_vars, thresh = 0.2){
+    remove_indices <- c()
+    for (i in start_col:ncol(dat)){
+      # Add an NA in position i if the column isnt numeric
+      if (!is.numeric(dat[,i])) remove_indices[i] <- NA
+      if (!is.null(keep_vars)){
+        if(colnames(dat)[i] %in% keep_vars) {
+          remove_indices[i] <- NA
+        } else{
+          # If proportion non-zero rows is below thresh, add its index to remove it
+          if (sum(dat[[i]] != 0) / length(dat[[i]]) < thresh){
+            remove_indices[i] <- i
+          }else{
+            remove_indices[i] <- NA
+          }
+        }
+      } else{
+        # If proportion non-zero rows is below thresh, add its index to remove it
+        if (sum(dat[[i]] != 0) / length(dat[[i]]) < thresh){
+          remove_indices[i] <- i
+        }else{
+          remove_indices[i] <- NA
+        }
+      }
+    } # for i
+    # Remove NA for just the column indices
+    remove_indices <- remove_indices[!is.na(remove_indices)]
+    # Remove columns with too many zero values
+    if (length(remove_indices) == 0){
+      return(dat)
+    }else{
+      dat <- dat[,-c(remove_indices)]
+      return(dat)
+    }
+  } # end function
   
   # Names of the genera, with selected variables removed
   rM_names <- colnames(dat)[(stop_col+1):ncol(dat)]
@@ -1037,7 +1075,11 @@ minp_deseq2_longitudinal(
 
 
 
-
+minp_deseq2_longitudinal(
+  counts, B = 5, formulas = list(c(~tx)), select_vars = c("x1", "x5"), 
+  stop_col = 4, group_col = 3, tot_counts_col = 4, time_col = 2, alpha = 0.05,
+  test = "Wald", thresh = 0.1, 
+  ordered = FALSE, reduced = NULL, digits = NULL)
 
 
 
