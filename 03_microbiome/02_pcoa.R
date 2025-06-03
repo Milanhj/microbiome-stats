@@ -82,19 +82,20 @@ pcoa <- function(dat, start_col, method){
 # Plot Centroids from PCoA1 and PCoA2
   #> vectors: Eigenvectors from pcoa() output
   #> centroids: Centroids from pcoa() output
-  #> label: labels for groups in the legend
   #> colors: option to manually set group colors
   #> title_text: optional plot title
   #> subtitle_text: optional plot subtitle
+  #> ci_se: which stat to use for confidence interval ellipse (requires library(ggpubr))
 
-plot_pcoa <- function(vectors, centroids, label, colors = NULL,
+plot_pcoa <- function(vectors, centroids, colors = NULL,
+                      ci_se = FALSE,
                       title_text = NULL, 
                       subtitle_text = NULL){ 
   
   # Eigenvectors and Centroids for PC1 and PC2 
   v1_2 <- as_tibble(vectors[,1:3])
   c1_2 <- as_tibble(centroids[,1:3]) %>% 
-    select(group, c_PCoA1 = PCoA1, c_PCoA2 = PCoA2)
+    dplyr::select(group, c_PCoA1 = PCoA1, c_PCoA2 = PCoA2)
   
   # Values to plot lines from segments to points in tibble format
   for_seg <- v1_2 %>% 
@@ -103,47 +104,92 @@ plot_pcoa <- function(vectors, centroids, label, colors = NULL,
     # add in a variable labeling row numbers by group
     mutate(point = row_number())
   
-  # PCoA 1 and 2
-  plot_1_2 <- 
-    ggplot() + 
-    stat_ellipse(
-      data = for_seg,
-      aes(x = v_PCoA1, y = v_PCoA2, fill = group),
-      geom = "polygon",
-      alpha = 0.175
-    ) +
-    geom_segment(
-      data = for_seg,
-      aes(x = v_PCoA1, xend = c_PCoA1,
-          y = v_PCoA2, yend = c_PCoA2,
-          color = group),
-      alpha = 0.30
-    ) +
-    # centroids
-    geom_point(
-      data = for_seg, # group and first two PC
-      aes(x = c_PCoA1, y = c_PCoA2, color = group),
-      size = 5,
-      # shape = 18
-    ) +
-    # points
-    geom_point(
-      data = for_seg,
-      aes(x = v_PCoA1, y = v_PCoA2, color = group), 
-      size = 2
-    ) +
-    labs(
-      title = title_text,
-      subtitle = subtitle_text,
-      x = "PCoA1",
-      y = "PCoA2"
-    ) +
-    theme_light() +
-    theme(
-      legend.title = element_blank(),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      aspect.ratio = 1)
+  if (ci_se){  # use standard error for elipse
+    
+    # PCoA 1 and 2
+    plot_1_2 <- 
+      ggplot() + 
+      stat_conf_ellipse(
+        data = for_seg,
+        aes(x = v_PCoA1, y = v_PCoA2, fill = group),
+        alpha = 0.2, geom = "polygon"
+      ) +
+      geom_segment(
+        data = for_seg,
+        aes(x = v_PCoA1, xend = c_PCoA1,
+            y = v_PCoA2, yend = c_PCoA2,
+            color = group),
+        alpha = 0.50
+      ) +
+      # centroids
+      geom_point(
+        data = for_seg, # group and first two PC
+        aes(x = c_PCoA1, y = c_PCoA2, color = group),
+        size = 5,
+        # shape = 18
+      ) +
+      # points
+      geom_point(
+        data = for_seg,
+        aes(x = v_PCoA1, y = v_PCoA2, color = group), 
+        size = 2
+      ) +
+      labs(
+        title = title_text,
+        subtitle = subtitle_text,
+        x = "PCoA1",
+        y = "PCoA2"
+      ) +
+      theme_light() +
+      theme(
+        legend.title = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        aspect.ratio = 1)
+    
+  } else{  # use standard deviation for elipse
+    # PCoA 1 and 2
+    plot_1_2 <- 
+      ggplot() + 
+      stat_ellipse(
+        data = for_seg,
+        aes(x = v_PCoA1, y = v_PCoA2, fill = group),
+        geom = "polygon",
+        alpha = 0.2
+      ) +
+      geom_segment(
+        data = for_seg,
+        aes(x = v_PCoA1, xend = c_PCoA1,
+            y = v_PCoA2, yend = c_PCoA2,
+            color = group),
+        alpha = 0.50
+      ) +
+      # centroids
+      geom_point(
+        data = for_seg, # group and first two PC
+        aes(x = c_PCoA1, y = c_PCoA2, color = group),
+        size = 5,
+        # shape = 18
+      ) +
+      # points
+      geom_point(
+        data = for_seg,
+        aes(x = v_PCoA1, y = v_PCoA2, color = group), 
+        size = 2
+      ) +
+      labs(
+        title = title_text,
+        subtitle = subtitle_text,
+        x = "PCoA1",
+        y = "PCoA2"
+      ) +
+      theme_light() +
+      theme(
+        legend.title = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        aspect.ratio = 1)
+  } # end if else
   
   if (is.null(colors)){
     
@@ -153,11 +199,11 @@ plot_pcoa <- function(vectors, centroids, label, colors = NULL,
     
     plot_1_2 <- plot_1_2 +     
       scale_color_manual(
-        labels = label,
+        #labels = label,
         values = colors
       ) +
       scale_fill_manual(
-        labels = label,
+        #labels = label,
         values = colors
       )
     return(plot_1_2)
@@ -165,6 +211,8 @@ plot_pcoa <- function(vectors, centroids, label, colors = NULL,
   } # end else
   
 } # end function
+
+
 
 
 

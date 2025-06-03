@@ -918,7 +918,7 @@ columns</li>
 <h3>Description</h3>
 <p>Plot Centroids from PCoA1 and PCoA2.</p>
 <p><strong>Usage</strong></p>
-<p><code>plot_pcoa(vectors, centroids, label, colors = NULL, title_text = NULL, subtitle_text = NULL)</code></p>
+<p><code>plot_pcoa(vectors, centroids, colors = NULL, title_text = NULL, subtitle_text = NULL, ci_se = FALSE)</code></p>
 <p><strong>Arguments</strong></p>
 <p>vectors</p>
 <ul>
@@ -927,10 +927,6 @@ columns</li>
 <p>centroids</p>
 <ul>
 <li>Centroids from <code>pcoa()</code> output</li>
-</ul>
-<p>label</p>
-<ul>
-<li>Labels for groups in the legend</li>
 </ul>
 <p>colors</p>
 <ul>
@@ -943,6 +939,13 @@ columns</li>
 <p>subtitle_text</p>
 <ul>
 <li>Optional plot subtitle</li>
+</ul>
+<p>ci_se</p>
+<ul>
+<li>which stat to use for confidence interval ellipse (requires
+library(ggpubr))</li>
+<li>ci_se uses ggpubr to calculate confidence ellipse with standard
+error</li>
 </ul>
 <p><br></p>
 </div>

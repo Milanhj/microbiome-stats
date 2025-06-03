@@ -607,7 +607,7 @@ Plot Centroids from PCoA1 and PCoA2.
 
 **Usage**
 
-`plot_pcoa(vectors, centroids, label, colors = NULL, title_text = NULL, subtitle_text = NULL)`
+`plot_pcoa(vectors, centroids, colors = NULL, title_text = NULL, subtitle_text = NULL, ci_se = FALSE)`
 
 **Arguments**
 
@@ -619,9 +619,6 @@ centroids
 
 -   Centroids from `pcoa()` output
 
-label
-
--   Labels for groups in the legend
 
 colors
 
@@ -634,6 +631,11 @@ title_text
 subtitle_text
 
 -   Optional plot subtitle
+
+ci_se
+
+- which stat to use for confidence interval ellipse (requires library(ggpubr))
+- ci_se uses ggpubr to calculate confidence ellipse with standard error
 
 <br>
 
