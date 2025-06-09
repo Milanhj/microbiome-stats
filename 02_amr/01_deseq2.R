@@ -657,7 +657,7 @@ minp_deseq2_longitudinal <- function(
     ordered = FALSE, reduced = NULL, digits = NULL){
   
   # Convenience function to remove the too sparse columns
-  remove_sparse_cols <- function(dat, start_col, keep_vars, thresh = 0.2){
+  remove_sparse_cols <- function(dat, start_col, thresh = 0.2, keep_vars = NULL){
     remove_indices <- c()
     for (i in start_col:ncol(dat)){
       # Add an NA in position i if the column isnt numeric
